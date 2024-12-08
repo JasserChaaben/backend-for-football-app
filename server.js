@@ -17,7 +17,7 @@ io.on('connection', (socket) => {
 
   socket.on('createLobby', ({ playerInfo, isPrivate,started }, callback) => {
     const lobbyId = Math.random().toString(36).substring(2, 14); // Generate a random 12-character ID
-    lobbies[lobbyId] = { players: [{ id: socket.id, playerInfo,turn : true }], isPrivate, started ,Dice:0};
+    lobbies[lobbyId] = { players: [{ id: socket.id, playerInfo,position:1,turn : true }], isPrivate, started ,Dice:0};
     socket.join(lobbyId);
     console.log(`Lobby created: ${lobbyId}`);
     console.log(`Lobby started: ${lobbies[lobbyId].started}`);
@@ -110,7 +110,7 @@ io.on('connection', (socket) => {
       return callback({ success: false, message: 'Lobby is full' });
     }
   
-    lobby.players.push({ id: socket.id, playerInfo ,turn : false});
+    lobby.players.push({ id: socket.id, playerInfo,position:1 ,turn : false});
     socket.join(lobbyId);
     io.to(lobbyId).emit('updateLobby', lobby.players);
     callback({ success: true, players: lobby.players });
@@ -160,10 +160,44 @@ socket.on('getLobbyPlayers', ({ lobbyId }) => {
     console.log(diceRoll);
     lobbies[lobbyId].Dice = diceRoll;
     console.log(lobbies[lobbyId].Dice);
+    
+    lobbies[lobbyId].players.find((p) => p.id === socket.id).turn = false;
     io.to(lobbyId).emit('updateLobby', lobbies[lobbyId].players);
+    setTimeout(() => {
+      movePlayer(socket.id, diceRoll, lobbyId,1);
+    }, 1500);
   });
 
-  socket.on('goNextTurn', ({ lobbyId }) => {
+  function movePlayer(playerId, diceRoll, lobbyId,first) {
+    
+    const lobby = lobbies[lobbyId];
+    const player = lobby.players.find((p) => p.id === playerId);
+    if(player.position>=30)
+    {
+      console.log(player.playerInfo.name + " has won the game ")
+      return;
+    }
+    if(first>diceRoll)
+    {
+      //insert Challenge here instead of going to nextPlayer's Turn
+    goToNextTurn(playerId, diceRoll, lobbyId);
+    
+    io.to(lobbyId).emit('updateLobby', lobbies[lobbyId].players);
+    return;
+    }
+    if (!player) {
+      console.error('Player not found in lobby');
+      return;
+    }
+  
+    player.position += 1; 
+    setTimeout(() => {
+      movePlayer(socket.id, diceRoll, lobbyId,first+1);
+    }, 250);
+    io.to(lobbyId).emit('updateLobby', lobbies[lobbyId].players);
+  }
+  
+  function goToNextTurn(playerId, diceRoll, lobbyId) {
     const lobby = lobbies[lobbyId];
 
     if (lobby) {
@@ -177,8 +211,8 @@ socket.on('getLobbyPlayers', ({ lobbyId }) => {
       lobby.players[nextIndex].turn = true;
   
       io.to(lobbyId).emit('updateLobby', lobby.players);
-    }
-  });
+  }
+}
   socket.on('getDice', ({ lobbyId }, callback) => {
     if (lobbies[lobbyId]) {
       callback({ DiceRoll: lobbies[lobbyId].Dice });
