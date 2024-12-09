@@ -11,32 +11,60 @@ const io = new Server(server, {
   },
 });
 
+const Quizzes = require('./Quizzes');
+
+const lobbyQuizzes = {}; 
+
+
+app.get('/quizzes', (req, res) => {
+  res.json(Quizzes);
+});
+
 const lobbies = {};
 io.on('connection', (socket) => {
   console.log('A user connected:', socket.id);
 
   socket.on('createLobby', ({ playerInfo, isPrivate,started }, callback) => {
     const lobbyId = Math.random().toString(36).substring(2, 14); // Generate a random 12-character ID
-    lobbies[lobbyId] = { players: [{ id: socket.id, playerInfo,position:1,turn : true,toAnswer:false }], isPrivate, started ,Dice:0};
+    lobbies[lobbyId] = { players: [{ id: socket.id, playerInfo,position:1,turn : true,toAnswer:false }], isPrivate, started ,Dice:0 ,showPopUp:false,SubmittedAnswer:"",currentResult:"" };
     socket.join(lobbyId);
     console.log(`Lobby created: ${lobbyId}`);
     console.log(`Lobby started: ${lobbies[lobbyId].started}`);
     callback({ success: true, lobbyId, players: lobbies[lobbyId].players });
   });
+  function getRandomQuiz() {
+    const multipleChoiceKeys = Object.keys(Quizzes.MultipleChoices);
+    const randomIndex = Math.floor(Math.random() * multipleChoiceKeys.length);
+    const randomQuiz = Quizzes.MultipleChoices[multipleChoiceKeys[randomIndex]];
+    return randomQuiz;
+  }
+  
   socket.on('startGame', ({ lobbyId }, callback) => {
     const lobby = lobbies[lobbyId];
-  
-    console.log(`Lobby started: ${lobbies[lobbyId].started}`);
+    
     if (!lobby) {
       return callback({ success: false, message: 'Lobby not found' });
     }
-    if (lobby.started==true){
-      return callback({ success: false, message: 'Game aldready started' });
+    if (lobby.started === true) {
+      return callback({ success: false, message: 'Game already started' });
     }
-    lobby.started=true;
-    console.log(`Lobby started: ${lobbies[lobbyId].started}`);
+  
+    lobby.started = true;
+  
+  
+    
     io.to(lobbyId).emit('updateLobby', lobby.players);
-    callback({ success : true });
+    callback({ success: true });
+  });
+  
+  socket.on('getLobbyQuiz', ({ lobbyId }, callback) => {
+    const quiz = lobbyQuizzes[lobbyId];
+    
+    if (!quiz) {
+      return callback({ success: false, message: 'No quiz found for this lobby' });
+    }
+    
+    callback({ success: true, question: quiz.Question,choices:quiz.Choices });
   });
   socket.on('checkOwner', ({ lobbyId }, callback) => {
     const lobby = lobbies[lobbyId];
@@ -153,10 +181,101 @@ socket.on('getLobbyPlayers', ({ lobbyId }) => {
     }
   });
 
+  socket.on('openQuiz', ({ lobbyId },callback) => {
+    const lobby = lobbies[lobbyId];
+    
+    if (lobby) {
+      return callback({ popUp:lobby.showPopUp });
+    }
+  });
+  
+  socket.on('getSubmittedAnswer', ({ lobbyId },callback) => {
+    const lobby = lobbies[lobbyId];
+    
+    if (lobby) {
+      return callback({ subAnsw:lobby.SubmittedAnswer });
+    }
+  });
+  
+  socket.on('getcurrentResult', ({ lobbyId },callback) => {
+    const lobby = lobbies[lobbyId];
+    
+    if (lobby) {
+      return callback({ res:lobby.currentResult });
+    }
+  });
+  socket.on('submitAnswer', ({ lobbyId,choice }) => {
+
+    lobbies[lobbyId].SubmittedAnswer=choice;
+    io.to(lobbyId).emit('multipleChoicesUpdate', lobbies[lobbyId].players);
+    console.log("choice"+choice);
+    console.log("SubmittedAnswer "+lobbies[lobbyId].SubmittedAnswer)
+    const player= lobbies[lobbyId].players.find((p) => p.id === socket.id);
+    let result ="";
+    if(!player.toAnswer)
+      return;
+    player.toAnswer=false;
+    if(lobbyQuizzes[lobbyId].CorrectAnswer==choice)
+      {
+        result="Correct Answer";
+      }
+      else{
+        result="Wrong Answer"
+      }
+    setTimeout(() => {
+      io.to(lobbyId).emit('multipleChoicesUpdate', lobbies[lobbyId].players);
+      lobbies[lobbyId].currentResult=result;
+    }, 1000);
+   
+    setTimeout(() => {
+      io.to(lobbyId).emit('updateLobby', lobbies[lobbyId].players);
+      lobbies[lobbyId].showPopUp=false;
+     
+       
+    }, 3500);
+   
+    setTimeout(() => {
+    
+      if(lobbyQuizzes[lobbyId].CorrectAnswer==choice)
+        {
+          goToNextTurn(socket.id,lobbyId);
+        }
+        else{
+          movePlayerReverse(socket.id,lobbies[lobbyId].Dice,lobbyId,1)
+        }
+       
+    }, 5000);
+  });
+
+  function movePlayerReverse(playerId, diceRoll, lobbyId,first) {
+    
+    const lobby = lobbies[lobbyId];
+    const player = lobby.players.find((p) => p.id === playerId);
+   
+    if(first>diceRoll||player.position==1)
+    {
+      goToNextTurn(playerId,lobbyId);
+    return;
+    }
+    if (!player) {
+      console.error('Player not found in lobby');
+      return;
+    }
+
+    player.position -= 1; 
+    setTimeout(() => {
+      movePlayerReverse(playerId, diceRoll, lobbyId,first+1);
+    }, 250);
+    io.to(lobbyId).emit('updateLobby', lobbies[lobbyId].players);
+  }
+  
+
+
   socket.on('rollDice', ({ lobbyId }) => {
     if(!lobbies[lobbyId].players.find((p) => p.id === socket.id).turn)
       return;
     
+    lobbies[lobbyId].SubmittedAnswer="";
     lobbies[lobbyId].players.find((p) => p.id === socket.id).turn = false;
     const min = 1;
     const max = 6;
@@ -182,9 +301,12 @@ socket.on('getLobbyPlayers', ({ lobbyId }) => {
     }
     if(first>diceRoll)
     {
+      
+    const randomQuiz = getRandomQuiz();
+    lobbyQuizzes[lobbyId] = randomQuiz;
       //insert Challenge here instead of going to nextPlayer's Turn
-    goToNextTurn(playerId, lobbyId);
-    
+    lobby.showPopUp=true;
+    player.toAnswer=true;
     io.to(lobbyId).emit('updateLobby', lobbies[lobbyId].players);
     return;
     }
@@ -202,7 +324,7 @@ socket.on('getLobbyPlayers', ({ lobbyId }) => {
   
   function goToNextTurn(playerId, lobbyId) {
     const lobby = lobbies[lobbyId];
-
+    lobby.currentResult=""
     console.log("next turn " )
     if (lobby) {
       const currentIndex = lobby.players.findIndex(player => player.id==playerId);
@@ -225,6 +347,15 @@ socket.on('getLobbyPlayers', ({ lobbyId }) => {
     }
   });
 
+  socket.on('getToAnswer', ({ lobbyId }, callback) => {
+    
+    const player = lobbies[lobbyId].players.find((player) => player.id === socket.id);
+    if (lobbies[lobbyId]) {
+      callback({ answer: player.toAnswer});
+    } else {
+      callback({ error: 'Lobby not found' });
+    }
+  });
   socket.on('disconnect', () => {
     console.log(`Player ${socket.id} disconnected`);
     ownerDisconnected = false;
