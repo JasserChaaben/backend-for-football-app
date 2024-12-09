@@ -17,7 +17,7 @@ io.on('connection', (socket) => {
 
   socket.on('createLobby', ({ playerInfo, isPrivate,started }, callback) => {
     const lobbyId = Math.random().toString(36).substring(2, 14); // Generate a random 12-character ID
-    lobbies[lobbyId] = { players: [{ id: socket.id, playerInfo,position:1,turn : true }], isPrivate, started ,Dice:0};
+    lobbies[lobbyId] = { players: [{ id: socket.id, playerInfo,position:1,turn : true,toAnswer:false }], isPrivate, started ,Dice:0};
     socket.join(lobbyId);
     console.log(`Lobby created: ${lobbyId}`);
     console.log(`Lobby started: ${lobbies[lobbyId].started}`);
@@ -110,7 +110,7 @@ io.on('connection', (socket) => {
       return callback({ success: false, message: 'Lobby is full' });
     }
   
-    lobby.players.push({ id: socket.id, playerInfo,position:1 ,turn : false});
+    lobby.players.push({ id: socket.id, playerInfo,position:1 ,turn : false,toAnswer:false});
     socket.join(lobbyId);
     io.to(lobbyId).emit('updateLobby', lobby.players);
     callback({ success: true, players: lobby.players });
@@ -154,6 +154,10 @@ socket.on('getLobbyPlayers', ({ lobbyId }) => {
   });
 
   socket.on('rollDice', ({ lobbyId }) => {
+    if(!lobbies[lobbyId].players.find((p) => p.id === socket.id).turn)
+      return;
+    
+    lobbies[lobbyId].players.find((p) => p.id === socket.id).turn = false;
     const min = 1;
     const max = 6;
     const diceRoll = Math.floor(Math.random() * (max - min + 1)) + min;
@@ -161,7 +165,6 @@ socket.on('getLobbyPlayers', ({ lobbyId }) => {
     lobbies[lobbyId].Dice = diceRoll;
     console.log(lobbies[lobbyId].Dice);
     
-    lobbies[lobbyId].players.find((p) => p.id === socket.id).turn = false;
     io.to(lobbyId).emit('updateLobby', lobbies[lobbyId].players);
     setTimeout(() => {
       movePlayer(socket.id, diceRoll, lobbyId,1);
@@ -180,7 +183,7 @@ socket.on('getLobbyPlayers', ({ lobbyId }) => {
     if(first>diceRoll)
     {
       //insert Challenge here instead of going to nextPlayer's Turn
-    goToNextTurn(playerId, diceRoll, lobbyId);
+    goToNextTurn(playerId, lobbyId);
     
     io.to(lobbyId).emit('updateLobby', lobbies[lobbyId].players);
     return;
@@ -197,11 +200,12 @@ socket.on('getLobbyPlayers', ({ lobbyId }) => {
     io.to(lobbyId).emit('updateLobby', lobbies[lobbyId].players);
   }
   
-  function goToNextTurn(playerId, diceRoll, lobbyId) {
+  function goToNextTurn(playerId, lobbyId) {
     const lobby = lobbies[lobbyId];
 
+    console.log("next turn " )
     if (lobby) {
-      const currentIndex = lobby.players.findIndex(player => player.turn);
+      const currentIndex = lobby.players.findIndex(player => player.id==playerId);
       
       if (currentIndex !== -1) {
         lobby.players[currentIndex].turn = false;
