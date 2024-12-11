@@ -10,6 +10,98 @@ const io = new Server(server, {
     methods: ['GET', 'POST'],
   },
 });
+const Grid = {
+  1: "Beginning",
+  2: "Deal",
+  3: "Training",
+  4: "Training",
+  5: "MatchDay",
+  6: "Training",
+  7: "Deal",
+  8: "Training",
+  9: "Training",
+  10: "MatchDay",
+  11: "Training",
+  12: "Deal",
+  13: "Training",
+  14: "Training",
+  15: "MatchDay",
+  16: "Training",
+  17: "Deal",
+  18: "Training",
+  19: "Training",
+  20: "MatchDay",
+  21: "Training",
+  22: "Deal",
+  23: "Training",
+  24: "Training",
+  25: "MatchDay",
+  26: "Training",
+  27: "Deal",
+  28: "Training",
+  29: "Training",
+  30: "MatchDay",
+  31: "Training",
+  32: "Deal",
+  33: "Training",
+  34: "Training",
+  35: "MatchDay",
+  36: "Training",
+  37: "Deal",
+  38: "Training",
+  39: "Training",
+  40: "MatchDay",
+  41: "Training",
+  42: "Deal",
+  43: "Training",
+  44: "DisciplinaryHearing",
+  45: "MatchDay",
+  46: "Training",
+  47: "Deal",
+  48: "Training",
+  49: "Training",
+  50: "MatchDay",
+  51: "Training",
+  52: "Deal",
+  53: "Training",
+  54: "Training",
+  55: "MatchDay",
+  56: "Training",
+  57: "Deal",
+  58: "Training",
+  59: "Training",
+  60: "MatchDay",
+  61: "Training",
+  62: "Deal",
+  63: "Training",
+  64: "Training",
+  65: "MatchDay",
+  66: "Training",
+  67: "Deal",
+  68: "Training",
+  69: "Training",
+  70: "MatchDay",
+  71: "Training",
+  72: "Deal",
+  73: "Training",
+  74: "Training",
+  75: "MatchDay",
+  76: "Training",
+  77: "Deal",
+  78: "Training",
+  79: "Training",
+  80: "MatchDay",
+  81: "Training",
+  82: "Deal",
+  83: "Training",
+  84: "Training",
+  85: "MatchDay",
+  86: "Training",
+  87: "Deal",
+  88: "DisciplinaryHearing",
+  89: "Final",
+  90: "Winner",
+};
 
 const Quizzes = require('./Quizzes');
 
@@ -233,18 +325,53 @@ socket.on('getLobbyPlayers', ({ lobbyId }) => {
      
        
     }, 3500);
-   
     setTimeout(() => {
     
-      if(lobbyQuizzes[lobbyId].CorrectAnswer==choice)
-        {
-          goToNextTurn(socket.id,lobbyId);
+      if (lobbyQuizzes[lobbyId].CorrectAnswer == choice) {
+        switch (Grid[player.position]) {
+          case "Training":
+            movePlayerAtEnd(socket.id, lobbies[lobbyId].Dice, lobbyId, 1);
+            break;
+          case "Deal":
+            movePlayerAtEnd(socket.id, 3, lobbyId, 1);
+            break;
+          case "MatchDay":
+            goToNextTurn(socket.id, lobbyId);
+            break;
+          case "Final":
+            movePlayerAtEnd(socket.id, 1, lobbyId, 1);
+            break;
+          case "DisciplinaryHearing":
+            goToNextTurn(socket.id, lobbyId);
+            break;
+          default:
+            goToNextTurn(socket.id, lobbyId);
+            break;
         }
-        else{
-          movePlayerReverse(socket.id,lobbies[lobbyId].Dice,lobbyId,1)
-        }
+      } else {
+        switch (Grid[player.position]) {
+          case "Training":
+            goToNextTurn(socket.id, lobbyId);
+            break;
+          case "Deal":
+             movePlayerReverse(socket.id, 3, lobbyId, 1);
+            break;
+          case "MatchDay":
+            movePlayerReverse(socket.id, lobbies[lobbyId].Dice, lobbyId, 1);
+            break;
+          case "Final":
+            movePlayerReverse(socket.id, 8, lobbyId, 1);
+            break;
+          case "DisciplinaryHearing":
+            movePlayerReverse(socket.id, player.position-1, lobbyId, 1);
+            break;  
+          default:
+            goToNextTurn(socket.id, lobbyId);
+            break;
+      }
+      
        
-    }, 5000);
+    }}, 5000);
   });
 
   function movePlayerReverse(playerId, diceRoll, lobbyId,first) {
@@ -290,6 +417,33 @@ socket.on('getLobbyPlayers', ({ lobbyId }) => {
     }, 1500);
   });
 
+  function movePlayerAtEnd(playerId, diceRoll, lobbyId,first) {
+    
+    if(first>diceRoll)
+      {
+        
+        goToNextTurn(socket.id, lobbyId);
+      return;
+      }
+    const lobby = lobbies[lobbyId];
+    const player = lobby.players.find((p) => p.id === playerId);
+    if(player.position>=30)
+    {
+      console.log(player.playerInfo.name + " has won the game ")
+      return;
+    }
+    if (!player) {
+      console.error('Player not found in lobby');
+      return;
+    }
+  
+    player.position += 1; 
+    setTimeout(() => {
+      
+      movePlayerAtEnd(socket.id, diceRoll, lobbyId, first+1);
+    }, 250);
+    io.to(lobbyId).emit('updateLobby', lobbies[lobbyId].players);
+  }
   function movePlayer(playerId, diceRoll, lobbyId,first) {
     
     const lobby = lobbies[lobbyId];
