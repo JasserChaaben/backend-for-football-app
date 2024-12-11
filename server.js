@@ -417,6 +417,13 @@ socket.on('getLobbyPlayers', ({ lobbyId }) => {
     }, 1500);
   });
 
+  function shuffleArray(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]]; // Swap elements
+    }
+}
+
   function movePlayerAtEnd(playerId, diceRoll, lobbyId,first) {
     
     if(first>diceRoll)
@@ -427,7 +434,7 @@ socket.on('getLobbyPlayers', ({ lobbyId }) => {
       }
     const lobby = lobbies[lobbyId];
     const player = lobby.players.find((p) => p.id === playerId);
-    if(player.position>=30)
+    if(player.position>=90)
     {
       console.log(player.playerInfo.name + " has won the game ")
       return;
@@ -448,17 +455,19 @@ socket.on('getLobbyPlayers', ({ lobbyId }) => {
     
     const lobby = lobbies[lobbyId];
     const player = lobby.players.find((p) => p.id === playerId);
-    if(player.position>=30)
+    if(player.position>=90)
     {
       console.log(player.playerInfo.name + " has won the game ")
       return;
     }
     if(first>diceRoll)
     {
-      
     const randomQuiz = getRandomQuiz();
+
+    shuffleArray(randomQuiz.Choices);
+
     lobbyQuizzes[lobbyId] = randomQuiz;
-      //insert Challenge here instead of going to nextPlayer's Turn
+      
     lobby.showPopUp=true;
     player.toAnswer=true;
     io.to(lobbyId).emit('updateLobby', lobbies[lobbyId].players);
