@@ -131,6 +131,7 @@ io.on('connection', (socket) => {
 
         console.log(playerIndex);
         if (playerIndex != -1) { 
+          
           lobby.players[playerIndex].id.push(socket.id);
 
           users[socket.id] = { 
@@ -206,7 +207,11 @@ io.on('connection', (socket) => {
   
   
     
-    io.to(lobbyId).emit('updateLobby', lobby.players);
+    lobbies[lobbyId].players.forEach(player => {
+  player.id.forEach(socketId => {
+    io.to(socketId).emit('updateLobby', lobbies[lobbyId].players);
+  });
+});;
     callback({ success: true });
   });
   
@@ -293,7 +298,11 @@ io.on('connection', (socket) => {
   
     lobby.players.push({ id: [socket.id], playerInfo, position: 1, turn: false, toAnswer: false });
     socket.join(lobbyId);
-    io.to(lobbyId).emit('updateLobby', lobby.players);
+    lobbies[lobbyId].players.forEach(player => {
+  player.id.forEach(socketId => {
+    io.to(socketId).emit('updateLobby', lobbies[lobbyId].players);
+  });
+});;
     callback({ success: true, players: lobby.players });
   });
   
@@ -304,7 +313,11 @@ socket.on('getLobbyPlayers', ({ lobbyId }) => {
     const lobby = lobbies[lobbyId];
     
     if (lobby) {
-      socket.emit('initialLobbyPlayers', lobby.players); 
+      lobbies[lobbyId].players.forEach(player => {
+        player.id.forEach(socketId => {
+          io.to(socketId).emit('initialLobbyPlayers', lobby.players);
+        });
+      });
     }
   });
 
@@ -334,7 +347,11 @@ socket.on('getLobbyPlayers', ({ lobbyId }) => {
   socket.on('submitAnswer', ({ lobbyId,choice }) => {
 
     lobbies[lobbyId].SubmittedAnswer=choice;
-    io.to(lobbyId).emit('multipleChoicesUpdate', lobbies[lobbyId].players);
+    lobbies[lobbyId].players.forEach(player => {
+  player.id.forEach(socketId => {
+    io.to(socketId).emit('multipleChoicesUpdate',  lobbies[lobbyId].players);
+  });
+});
     console.log("choice"+choice);
     console.log("SubmittedAnswer "+lobbies[lobbyId].SubmittedAnswer)
     const player= lobbies[lobbyId].players.find((p) => p.id.includes(socket.id));
@@ -350,12 +367,20 @@ socket.on('getLobbyPlayers', ({ lobbyId }) => {
         result="Wrong Answer"
       }
     setTimeout(() => {
-      io.to(lobbyId).emit('multipleChoicesUpdate', lobbies[lobbyId].players);
+      lobbies[lobbyId].players.forEach(player => {
+  player.id.forEach(socketId => {
+    io.to(socketId).emit('multipleChoicesUpdate',  lobbies[lobbyId].players);
+  });
+});
       lobbies[lobbyId].currentResult=result;
     }, 1000);
    
     setTimeout(() => {
-      io.to(lobbyId).emit('updateLobby', lobbies[lobbyId].players);
+      lobbies[lobbyId].players.forEach(player => {
+  player.id.forEach(socketId => {
+    io.to(socketId).emit('updateLobby', lobbies[lobbyId].players);
+  });
+});
       lobbies[lobbyId].showPopUp=false;
      
        
@@ -428,7 +453,11 @@ socket.on('getLobbyPlayers', ({ lobbyId }) => {
     setTimeout(() => {
       movePlayerReverse(playerId, diceRoll, lobbyId,first+1);
     }, 250);
-    io.to(lobbyId).emit('updateLobby', lobbies[lobbyId].players);
+    lobbies[lobbyId].players.forEach(player => {
+  player.id.forEach(socketId => {
+    io.to(socketId).emit('updateLobby', lobbies[lobbyId].players);
+  });
+});
   }
   
 
@@ -446,7 +475,11 @@ socket.on('getLobbyPlayers', ({ lobbyId }) => {
     lobbies[lobbyId].Dice = diceRoll;
     console.log(lobbies[lobbyId].Dice);
     
-    io.to(lobbyId).emit('updateLobby', lobbies[lobbyId].players);
+    lobbies[lobbyId].players.forEach(player => {
+  player.id.forEach(socketId => {
+    io.to(socketId).emit('updateLobby', lobbies[lobbyId].players);
+  });
+});
     setTimeout(() => {
       movePlayer(socket.id, diceRoll, lobbyId,1);
     }, 1500);
@@ -484,7 +517,11 @@ socket.on('getLobbyPlayers', ({ lobbyId }) => {
       
       movePlayerAtEnd(socket.id, diceRoll, lobbyId, first+1);
     }, 250);
-    io.to(lobbyId).emit('updateLobby', lobbies[lobbyId].players);
+    lobbies[lobbyId].players.forEach(player => {
+  player.id.forEach(socketId => {
+    io.to(socketId).emit('updateLobby', lobbies[lobbyId].players);
+  });
+});
   }
   function movePlayer(playerId, diceRoll, lobbyId,first) {
     
@@ -505,7 +542,11 @@ socket.on('getLobbyPlayers', ({ lobbyId }) => {
       
     lobby.showPopUp=true;
     player.toAnswer=true;
-    io.to(lobbyId).emit('updateLobby', lobbies[lobbyId].players);
+    lobbies[lobbyId].players.forEach(player => {
+  player.id.forEach(socketId => {
+    io.to(socketId).emit('updateLobby', lobbies[lobbyId].players);
+  });
+});
     return;
     }
     if (!player) {
@@ -517,7 +558,11 @@ socket.on('getLobbyPlayers', ({ lobbyId }) => {
     setTimeout(() => {
       movePlayer(socket.id, diceRoll, lobbyId,first+1);
     }, 250);
-    io.to(lobbyId).emit('updateLobby', lobbies[lobbyId].players);
+    lobbies[lobbyId].players.forEach(player => {
+  player.id.forEach(socketId => {
+    io.to(socketId).emit('updateLobby', lobbies[lobbyId].players);
+  });
+});
   }
   
   function goToNextTurn(playerId, lobbyId) {
@@ -534,7 +579,11 @@ socket.on('getLobbyPlayers', ({ lobbyId }) => {
       const nextIndex = (currentIndex + 1) % lobby.players.length;
       lobby.players[nextIndex].turn = true;
   
-      io.to(lobbyId).emit('updateLobby', lobby.players);
+      lobbies[lobbyId].players.forEach(player => {
+  player.id.forEach(socketId => {
+    io.to(socketId).emit('updateLobby', lobbies[lobbyId].players);
+  });
+});;
   }
 }
   socket.on('getDice', ({ lobbyId }, callback) => {
@@ -554,19 +603,53 @@ socket.on('getLobbyPlayers', ({ lobbyId }) => {
       callback({ error: 'Lobby not found' });
     }
   });
+
+  socket.on('leaveLobby', ({ lobbyId, playerId }, callback) => {
+    const lobby = lobbies[lobbyId];
+    ownerDisconnected = false;
+    if (!lobby) {
+      return ;
+    }
+    const playerIndex = lobby.players.findIndex((player) => player.id.includes(playerId));
+    
+    if (playerIndex === -1) {
+      return callback({ success: false, message: 'Player not found in lobby' });
+    }
+    if(lobby.players[playerIndex].playerInfo.owner){
+      ownerDisconnected=true
+    }
+    lobby.players.splice(playerIndex, 1);
+    lobbies[lobbyId].players.forEach(player => {
+  player.id.forEach(socketId => {
+    io.to(socketId).emit('updateLobby', lobbies[lobbyId].players);
+  });
+});; 
+    if (lobby.players.length === 0) {
+      delete lobbies[lobbyId];
+    }else if(ownerDisconnected){
+      lobbies[lobbyId].players[0].playerInfo.owner=true;
+    }
+    console.log(`Player ${playerId} left lobby ${lobbyId}`);
+    
+  });
   socket.on('disconnect', () => {
     console.log(`Player ${socket.id} disconnected`);
     ownerDisconnected = false;
+    /*
     for (const lobbyId in lobbies) {
       const lobby = lobbies[lobbyId];
-      const playerIndex = lobby.players.findIndex((player) => player.id === socket.id);
+      const playerIndex = lobby.players.findIndex((player) => player.id.includes(socket.id));
      
       if (playerIndex !== -1) {
         if(lobby.players[playerIndex].playerInfo.owner){
           ownerDisconnected=true
         }
         lobby.players.splice(playerIndex, 1);
-        io.to(lobbyId).emit('updateLobby', lobby.players); 
+        lobbies[lobbyId].players.forEach(player => {
+  player.id.forEach(socketId => {
+    io.to(socketId).emit('updateLobby', lobbies[lobbyId].players);
+  });
+});; 
         if (lobby.players.length === 0) {
           delete lobbies[lobbyId];
         }else if(ownerDisconnected){
@@ -576,7 +659,7 @@ socket.on('getLobbyPlayers', ({ lobbyId }) => {
         console.log(`Player ${socket.id} disconnected and removed from lobby ${lobbyId}`);
         break; 
       }
-  } });
+  }*/ });
 
 
 });
