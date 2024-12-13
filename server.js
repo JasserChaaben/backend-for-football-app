@@ -118,13 +118,28 @@ io.on('connection', (socket) => {
   console.log('A user connected:', socket.id);
   socket.on('restoreSession', ({ userID }) => {
     const user = users[userID];
-    console.log(userID)
-    console.log(user)
-    
-    if (user) {
-      const lobby = lobbies[user.lobbyId]; 
+    console.log(userID);
+    console.log(user);
 
+    if (user) {
+      const lobby = lobbies[user.lobbyId];
+
+      console.log(lobby);
       if (lobby) {
+        const playerIndex = lobby.players.findIndex(player => player.id.includes(userID));
+
+
+        console.log(playerIndex);
+        if (playerIndex != -1) { 
+          lobby.players[playerIndex].id.push(socket.id);
+
+          users[socket.id] = { 
+            name: lobby.players[playerIndex].playerInfo.name, 
+            lobbyId:user.lobbyId
+          };
+          delete users[userID];
+        }
+        
         socket.emit('restoreData', { user, players: lobby.players });
         
       } else {
@@ -134,7 +149,6 @@ io.on('connection', (socket) => {
       socket.emit('restoreData', null);
     }
   });
-
   // Handle user reconnect
   socket.on('connect', ({ userID }) => {
     if (players[userID]) {
@@ -145,7 +159,7 @@ io.on('connection', (socket) => {
     const lobbyId = Math.random().toString(36).substring(2, 14);
     const lobbyData = {
       players: [{
-        id: socket.id,
+        id: [socket.id],
         playerInfo,
         position: 1,
         turn: true,
@@ -159,6 +173,7 @@ io.on('connection', (socket) => {
       currentResult: "",
     };
     lobbies[lobbyId] = lobbyData;
+    console.log("lobby created with code : "+lobbyId)
     users[socket.id] = { 
       name: playerInfo.name, 
       lobbyId:lobbyId
@@ -204,7 +219,7 @@ io.on('connection', (socket) => {
     
     callback({ success: true, question: quiz.Question,choices:quiz.Choices });
   });
-  socket.on('checkOwner', ({ lobbyId ,userID}, callback) => {
+  socket.on('checkOwner', ({ lobbyId }, callback) => {
     const lobby = lobbies[lobbyId];
     
     if (!lobby) {
@@ -215,7 +230,7 @@ io.on('connection', (socket) => {
       return callback({ error: 'Player information not found or invalid', owner: false });
     }
   
-    const player = lobby.players.find(player => player.id === userID);
+    const player = lobby.players.find(player => player.id.includes(socket.id));
   
     if (!player) {
       return callback({ error: 'Player not found in lobby', owner: false });
@@ -223,7 +238,7 @@ io.on('connection', (socket) => {
   
     return callback({ owner: !!player.playerInfo.owner });
   });
-  socket.on('checkTurn', ({ lobbyId, userID }, callback) => {
+  socket.on('checkTurn', ({ lobbyId }, callback) => {
     const lobby = lobbies[lobbyId];
     
     if (!lobby) {
@@ -234,7 +249,7 @@ io.on('connection', (socket) => {
       return callback({ error: 'Player information not found or invalid', owner: false });
     }
   
-    const player = lobby.players.find(player => player.id === userID);
+    const player = lobby.players.find(player => player.id.includes(socket.id));
   
     if (!player) {
       return callback({ error: 'Player not found in lobby', owner: false });
@@ -258,7 +273,7 @@ io.on('connection', (socket) => {
   
     return callback({ started: lobby.started });
   });
-  socket.on('joinLobby', ({ playerInfo, lobbyId , userID}, callback) => {
+  socket.on('joinLobby', ({ playerInfo, lobbyId }, callback) => {
     const lobby = lobbies[lobbyId];
   
     if (!lobby) {
@@ -267,7 +282,7 @@ io.on('connection', (socket) => {
     if (lobby.started) {
       return callback({ success: false, message: 'Game already started' });
     }
-    const playerExists = lobby.players.some(player => player.id === userID);
+    const playerExists = lobby.players.some(player => player.id.includes(socket.id));
     if (playerExists) {
       return callback({ success: false, message: 'Player already in lobby' });
     }
@@ -276,13 +291,9 @@ io.on('connection', (socket) => {
       return callback({ success: false, message: 'Lobby is full' });
     }
   
-    lobby.players.push({ id: socket.id, playerInfo, position: 1, turn: false, toAnswer: false });
+    lobby.players.push({ id: [socket.id], playerInfo, position: 1, turn: false, toAnswer: false });
     socket.join(lobbyId);
     io.to(lobbyId).emit('updateLobby', lobby.players);
-    users[socket.id] = { 
-      name: playerInfo.name, 
-      lobbyId:lobbyId
-    };
     callback({ success: true, players: lobby.players });
   });
   
@@ -320,13 +331,13 @@ socket.on('getLobbyPlayers', ({ lobbyId }) => {
       return callback({ res:lobby.currentResult });
     }
   });
-  socket.on('submitAnswer', ({ lobbyId,choice,userID }) => {
+  socket.on('submitAnswer', ({ lobbyId,choice }) => {
 
     lobbies[lobbyId].SubmittedAnswer=choice;
     io.to(lobbyId).emit('multipleChoicesUpdate', lobbies[lobbyId].players);
     console.log("choice"+choice);
     console.log("SubmittedAnswer "+lobbies[lobbyId].SubmittedAnswer)
-    const player= lobbies[lobbyId].players.find((p) => p.id === userID);
+    const player= lobbies[lobbyId].players.find((p) => p.id.includes(socket.id));
     let result ="";
     if(!player.toAnswer)
       return;
@@ -354,43 +365,43 @@ socket.on('getLobbyPlayers', ({ lobbyId }) => {
       if (lobbyQuizzes[lobbyId].CorrectAnswer == choice) {
         switch (Grid[player.position]) {
           case "Training":
-            movePlayerAtEnd(userID, lobbies[lobbyId].Dice, lobbyId, 1);
+            movePlayerAtEnd(socket.id, lobbies[lobbyId].Dice, lobbyId, 1);
             break;
           case "Deal":
-            movePlayerAtEnd(userID, 3, lobbyId, 1);
+            movePlayerAtEnd(socket.id, 3, lobbyId, 1);
             break;
           case "MatchDay":
-            goToNextTurn(userID, lobbyId);
+            goToNextTurn(socket.id, lobbyId);
             break;
           case "Final":
-            movePlayerAtEnd(userID, 1, lobbyId, 1);
+            movePlayerAtEnd(socket.id, 1, lobbyId, 1);
             break;
           case "DisciplinaryHearing":
-            goToNextTurn(userID, lobbyId);
+            goToNextTurn(socket.id, lobbyId);
             break;
           default:
-            goToNextTurn(userID, lobbyId);
+            goToNextTurn(socket.id, lobbyId);
             break;
         }
       } else {
         switch (Grid[player.position]) {
           case "Training":
-            goToNextTurn(userID, lobbyId);
+            goToNextTurn(socket.id, lobbyId);
             break;
           case "Deal":
-             movePlayerReverse(userID, 3, lobbyId, 1);
+             movePlayerReverse(socket.id, 3, lobbyId, 1);
             break;
           case "MatchDay":
-            movePlayerReverse(userID, lobbies[lobbyId].Dice, lobbyId, 1);
+            movePlayerReverse(socket.id, lobbies[lobbyId].Dice, lobbyId, 1);
             break;
           case "Final":
-            movePlayerReverse(userID, 8, lobbyId, 1);
+            movePlayerReverse(socket.id, 8, lobbyId, 1);
             break;
           case "DisciplinaryHearing":
-            movePlayerReverse(userID, player.position-1, lobbyId, 1);
+            movePlayerReverse(socket.id, player.position-1, lobbyId, 1);
             break;  
           default:
-            goToNextTurn(userID, lobbyId);
+            goToNextTurn(socket.id, lobbyId);
             break;
       }
       
@@ -401,7 +412,7 @@ socket.on('getLobbyPlayers', ({ lobbyId }) => {
   function movePlayerReverse(playerId, diceRoll, lobbyId,first) {
     
     const lobby = lobbies[lobbyId];
-    const player = lobby.players.find((p) => p.id === playerId);
+    const player = lobby.players.find((player) => player.id.includes(playerId));
    
     if(first>diceRoll||player.position==1)
     {
@@ -422,12 +433,12 @@ socket.on('getLobbyPlayers', ({ lobbyId }) => {
   
 
 
-  socket.on('rollDice', ({ lobbyId,userID }) => {
-    if(!lobbies[lobbyId].players.find((p) => p.id === userID).turn)
+  socket.on('rollDice', ({ lobbyId }) => {
+    if(!lobbies[lobbyId].players.find((p) => p.id.includes(socket.id)).turn)
       return;
     
     lobbies[lobbyId].SubmittedAnswer="";
-    lobbies[lobbyId].players.find((p) => p.id === userID).turn = false;
+    lobbies[lobbyId].players.find((p) => p.id.includes(socket.id)).turn = false;
     const min = 1;
     const max = 6;
     const diceRoll = Math.floor(Math.random() * (max - min + 1)) + min;
@@ -437,7 +448,7 @@ socket.on('getLobbyPlayers', ({ lobbyId }) => {
     
     io.to(lobbyId).emit('updateLobby', lobbies[lobbyId].players);
     setTimeout(() => {
-      movePlayer(userID, diceRoll, lobbyId,1);
+      movePlayer(socket.id, diceRoll, lobbyId,1);
     }, 1500);
   });
 
@@ -453,11 +464,11 @@ socket.on('getLobbyPlayers', ({ lobbyId }) => {
     if(first>diceRoll)
       {
         
-        goToNextTurn(playerId, lobbyId);
+        goToNextTurn(socket.id, lobbyId);
       return;
       }
     const lobby = lobbies[lobbyId];
-    const player = lobby.players.find((p) => p.id === playerId);
+    const player = lobby.players.find((p) => p.id.includes(playerId));
     if(player.position>=90)
     {
       console.log(player.playerInfo.name + " has won the game ")
@@ -471,14 +482,14 @@ socket.on('getLobbyPlayers', ({ lobbyId }) => {
     player.position += 1; 
     setTimeout(() => {
       
-      movePlayerAtEnd(playerId, diceRoll, lobbyId, first+1);
+      movePlayerAtEnd(socket.id, diceRoll, lobbyId, first+1);
     }, 250);
     io.to(lobbyId).emit('updateLobby', lobbies[lobbyId].players);
   }
   function movePlayer(playerId, diceRoll, lobbyId,first) {
     
     const lobby = lobbies[lobbyId];
-    const player = lobby.players.find((p) => p.id === playerId);
+    const player = lobby.players.find((p) => p.id.includes(playerId));
     if(player.position>=90)
     {
       console.log(player.playerInfo.name + " has won the game ")
@@ -504,7 +515,7 @@ socket.on('getLobbyPlayers', ({ lobbyId }) => {
   
     player.position += 1; 
     setTimeout(() => {
-      movePlayer(playerId, diceRoll, lobbyId,first+1);
+      movePlayer(socket.id, diceRoll, lobbyId,first+1);
     }, 250);
     io.to(lobbyId).emit('updateLobby', lobbies[lobbyId].players);
   }
@@ -534,9 +545,9 @@ socket.on('getLobbyPlayers', ({ lobbyId }) => {
     }
   });
 
-  socket.on('getToAnswer', ({ lobbyId,userID }, callback) => {
+  socket.on('getToAnswer', ({ lobbyId }, callback) => {
     
-    const player = lobbies[lobbyId].players.find((player) => player.id === userID);
+    const player = lobbies[lobbyId].players.find((player) => player.id.includes(socket.id));
     if (lobbies[lobbyId]) {
       callback({ answer: player.toAnswer});
     } else {
@@ -544,12 +555,29 @@ socket.on('getLobbyPlayers', ({ lobbyId }) => {
     }
   });
   socket.on('disconnect', () => {
-    const userID = Object.keys(users).find(id => users[id].socketID === socket.id);
-    if (userID) {
-      console.log(`Player ${userID} disconnected, saving data`);
-      users[userID] = { socketID: socket.id, progress: users[userID].progress }; 
-    }
-  });
+    console.log(`Player ${socket.id} disconnected`);
+    ownerDisconnected = false;
+    for (const lobbyId in lobbies) {
+      const lobby = lobbies[lobbyId];
+      const playerIndex = lobby.players.findIndex((player) => player.id === socket.id);
+     
+      if (playerIndex !== -1) {
+        if(lobby.players[playerIndex].playerInfo.owner){
+          ownerDisconnected=true
+        }
+        lobby.players.splice(playerIndex, 1);
+        io.to(lobbyId).emit('updateLobby', lobby.players); 
+        if (lobby.players.length === 0) {
+          delete lobbies[lobbyId];
+        }else if(ownerDisconnected){
+          lobbies[lobbyId].players[0].playerInfo.owner=true;
+        }
+        
+        console.log(`Player ${socket.id} disconnected and removed from lobby ${lobbyId}`);
+        break; 
+      }
+  } });
+
 
 });
 
