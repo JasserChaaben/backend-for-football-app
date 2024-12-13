@@ -377,7 +377,7 @@ const Quizzes = {
         "Cristiano Ronaldo",
         "Lionel Messi",
         "Gareth Bale",
-        "Cristiano Ronaldo",
+        "Fernando Torres",
       ],
       CorrectAnswer: "Cristiano Ronaldo",
     },
