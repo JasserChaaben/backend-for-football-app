@@ -133,6 +133,7 @@ io.on('connection', (socket) => {
         if (playerIndex != -1) { 
           
           lobby.players[playerIndex].id.push(socket.id);
+          lobby.players[playerIndex].disconnected=false;
 
           users[socket.id] = { 
             name: lobby.players[playerIndex].playerInfo.name, 
@@ -165,6 +166,8 @@ io.on('connection', (socket) => {
         position: 1,
         turn: true,
         toAnswer: false,
+        disconnected: false,
+        timeToReconnect:0
       }],
       isPrivate,
       started,
@@ -195,7 +198,15 @@ io.on('connection', (socket) => {
   
   socket.on('startGame', ({ lobbyId }, callback) => {
     const lobby = lobbies[lobbyId];
+    if (!lobbies[lobbyId]) {
+      delete lobbies[lobbyId];
+      return;
+    }
     
+    if (!lobbies[lobbyId].players) {
+      delete lobbies[lobbyId];
+      return;
+    }
     if (!lobby) {
       return callback({ success: false, message: 'Lobby not found' });
     }
@@ -217,7 +228,15 @@ io.on('connection', (socket) => {
   
   socket.on('getLobbyQuiz', ({ lobbyId }, callback) => {
     const quiz = lobbyQuizzes[lobbyId];
+    if (!lobbies[lobbyId]) {
+      delete lobbies[lobbyId];
+      return;
+    }
     
+    if (!lobbies[lobbyId].players) {
+      delete lobbies[lobbyId];
+      return;
+    }
     if (!quiz) {
       return callback({ success: false, message: 'No quiz found for this lobby' });
     }
@@ -226,7 +245,15 @@ io.on('connection', (socket) => {
   });
   socket.on('checkOwner', ({ lobbyId }, callback) => {
     const lobby = lobbies[lobbyId];
+    if (!lobbies[lobbyId]) {
+      delete lobbies[lobbyId];
+      return;
+    }
     
+    if (!lobbies[lobbyId].players) {
+      delete lobbies[lobbyId];
+      return;
+    }
     if (!lobby) {
       return callback({ error: 'Lobby not found', owner: false });
     }
@@ -245,7 +272,15 @@ io.on('connection', (socket) => {
   });
   socket.on('checkTurn', ({ lobbyId }, callback) => {
     const lobby = lobbies[lobbyId];
+    if (!lobbies[lobbyId]) {
+      delete lobbies[lobbyId];
+      return;
+    }
     
+    if (!lobbies[lobbyId].players) {
+      delete lobbies[lobbyId];
+      return;
+    }
     if (!lobby) {
       return callback({ error: 'Lobby not found', owner: false });
     }
@@ -266,7 +301,15 @@ io.on('connection', (socket) => {
   
   socket.on('gameStarted', ({ lobbyId }, callback) => {
     const lobby = lobbies[lobbyId];
+    if (!lobbies[lobbyId]) {
+      delete lobbies[lobbyId];
+      return;
+    }
     
+    if (!lobbies[lobbyId].players) {
+      delete lobbies[lobbyId];
+      return;
+    }
     if (!lobby) {
       return callback({ error: 'Lobby not found', owner: false });
     }
@@ -280,7 +323,15 @@ io.on('connection', (socket) => {
   });
   socket.on('joinLobby', ({ playerInfo, lobbyId }, callback) => {
     const lobby = lobbies[lobbyId];
-  
+    if (!lobbies[lobbyId]) {
+      delete lobbies[lobbyId];
+      return;
+    }
+    
+    if (!lobbies[lobbyId].players) {
+      delete lobbies[lobbyId];
+      return;
+    }
     if (!lobby) {
       return callback({ success: false, message: 'Lobby not found' });
     }
@@ -296,8 +347,12 @@ io.on('connection', (socket) => {
       return callback({ success: false, message: 'Lobby is full' });
     }
   
-    lobby.players.push({ id: [socket.id], playerInfo, position: 1, turn: false, toAnswer: false });
+    lobby.players.push({ id: [socket.id], playerInfo, position: 1, turn: false, toAnswer: false , disconnected: false,timeToReconnect:0});
     socket.join(lobbyId);
+    users[socket.id] = { 
+      name: playerInfo.name, 
+      lobbyId:lobbyId
+    };
     lobbies[lobbyId].players.forEach(player => {
   player.id.forEach(socketId => {
     io.to(socketId).emit('updateLobby', lobbies[lobbyId].players);
@@ -311,7 +366,15 @@ io.on('connection', (socket) => {
   
 socket.on('getLobbyPlayers', ({ lobbyId }) => {
     const lobby = lobbies[lobbyId];
+    if (!lobbies[lobbyId]) {
+      delete lobbies[lobbyId];
+      return;
+    }
     
+    if (!lobbies[lobbyId].players) {
+      delete lobbies[lobbyId];
+      return;
+    }
     if (lobby) {
       lobbies[lobbyId].players.forEach(player => {
         player.id.forEach(socketId => {
@@ -345,8 +408,17 @@ socket.on('getLobbyPlayers', ({ lobbyId }) => {
     }
   });
   socket.on('submitAnswer', ({ lobbyId,choice }) => {
-
+    if (!lobbies[lobbyId]) {
+      delete lobbies[lobbyId];
+      return;
+    }
+    
+    if (!lobbies[lobbyId].players) {
+      delete lobbies[lobbyId];
+      return;
+    }
     lobbies[lobbyId].SubmittedAnswer=choice;
+    
     lobbies[lobbyId].players.forEach(player => {
   player.id.forEach(socketId => {
     io.to(socketId).emit('multipleChoicesUpdate',  lobbies[lobbyId].players);
@@ -437,6 +509,15 @@ socket.on('getLobbyPlayers', ({ lobbyId }) => {
   function movePlayerReverse(playerId, diceRoll, lobbyId,first) {
     
     const lobby = lobbies[lobbyId];
+    if (!lobbies[lobbyId]) {
+      delete lobbies[lobbyId];
+      return;
+    }
+    
+    if (!lobbies[lobbyId].players) {
+      delete lobbies[lobbyId];
+      return;
+    }
     const player = lobby.players.find((player) => player.id.includes(playerId));
    
     if(first>diceRoll||player.position==1)
@@ -463,6 +544,15 @@ socket.on('getLobbyPlayers', ({ lobbyId }) => {
 
 
   socket.on('rollDice', ({ lobbyId }) => {
+    if (!lobbies[lobbyId]) {
+      delete lobbies[lobbyId];
+      return;
+    }
+    
+    if (!lobbies[lobbyId].players) {
+      delete lobbies[lobbyId];
+      return;
+    }
     if(!lobbies[lobbyId].players.find((p) => p.id.includes(socket.id)).turn)
       return;
     
@@ -493,7 +583,15 @@ socket.on('getLobbyPlayers', ({ lobbyId }) => {
 }
 
   function movePlayerAtEnd(playerId, diceRoll, lobbyId,first) {
+    if (!lobbies[lobbyId]) {
+      delete lobbies[lobbyId];
+      return;
+    }
     
+    if (!lobbies[lobbyId].players) {
+      delete lobbies[lobbyId];
+      return;
+    }
     if(first>diceRoll)
       {
         
@@ -526,6 +624,15 @@ socket.on('getLobbyPlayers', ({ lobbyId }) => {
   function movePlayer(playerId, diceRoll, lobbyId,first) {
     
     const lobby = lobbies[lobbyId];
+    if (!lobbies[lobbyId]) {
+      delete lobbies[lobbyId];
+      return;
+    }
+    
+    if (!lobbies[lobbyId].players) {
+      delete lobbies[lobbyId];
+      return;
+    }
     const player = lobby.players.find((p) => p.id.includes(playerId));
     if(player.position>=90)
     {
@@ -567,6 +674,24 @@ socket.on('getLobbyPlayers', ({ lobbyId }) => {
   
   function goToNextTurn(playerId, lobbyId) {
     const lobby = lobbies[lobbyId];
+    if (!lobbies[lobbyId]) {
+      delete lobbies[lobbyId];
+      return;
+    }
+    
+    if (!lobbies[lobbyId].players) {
+      delete lobbies[lobbyId];
+      return;
+    }
+    if (!lobby) {
+      delete lobbies[lobbyId];
+      return;
+    }
+    
+    if (!lobby.players) {
+      delete lobbies[lobbyId];
+      return;
+    }
     lobby.currentResult=""
     console.log("next turn " )
     if (lobby) {
@@ -587,6 +712,16 @@ socket.on('getLobbyPlayers', ({ lobbyId }) => {
   }
 }
   socket.on('getDice', ({ lobbyId }, callback) => {
+    if (!lobbies[lobbyId]) {
+      delete lobbies[lobbyId];
+      return;
+    }
+    
+    if (!lobbies[lobbyId].players) {
+      delete lobbies[lobbyId];
+      return;
+    }
+    
     if (lobbies[lobbyId]) {
       callback({ DiceRoll: lobbies[lobbyId].Dice });
     } else {
@@ -605,61 +740,92 @@ socket.on('getLobbyPlayers', ({ lobbyId }) => {
   });
 
   socket.on('leaveLobby', ({ lobbyId, playerId }, callback) => {
+    disconnectForGood(lobbyId,playerId)
+  });
+
+  const disconnectForGood=(lobbyId,playerId)=>{
+    
     const lobby = lobbies[lobbyId];
-    ownerDisconnected = false;
     if (!lobby) {
-      return ;
+      delete lobbies[lobbyId];
+      return;
+    }
+    
+    if (!lobby.players) {
+      delete lobbies[lobbyId];
+      return;
     }
     const playerIndex = lobby.players.findIndex((player) => player.id.includes(playerId));
-    
-    if (playerIndex === -1) {
-      return callback({ success: false, message: 'Player not found in lobby' });
-    }
-    if(lobby.players[playerIndex].playerInfo.owner){
-      ownerDisconnected=true
-    }
-    lobby.players.splice(playerIndex, 1);
-    lobbies[lobbyId].players.forEach(player => {
-  player.id.forEach(socketId => {
-    io.to(socketId).emit('updateLobby', lobbies[lobbyId].players);
-  });
+    if (playerIndex !== -1) {
+      if(lobby.players[playerIndex].playerInfo.owner){
+        ownerDisconnected=true
+      }
+      if(lobby.players[playerIndex].turn||lobby.players[playerIndex].toAnswer){
+        lobby.showPopUp=false;
+        goToNextTurn(playerId, lobbyId);
+      }
+      lobby.players.splice(playerIndex, 1);
+      lobbies[lobbyId].players.forEach(player => {
+player.id.forEach(socketId => {
+  io.to(socketId).emit('updateLobby', lobbies[lobbyId].players);
+});
 });; 
-    if (lobby.players.length === 0) {
-      delete lobbies[lobbyId];
-    }else if(ownerDisconnected){
-      lobbies[lobbyId].players[0].playerInfo.owner=true;
+      if (lobby.players.length === 0) {
+        delete lobbies[lobbyId];
+      }else if(ownerDisconnected){
+        lobbies[lobbyId].players[0].playerInfo.owner=true;
+      }
+      
+      console.log(`Player ${socket.id} disconnected and removed from lobby ${lobbyId}`);
+  }
+  }
+  const CheckForDisconnection=(lobbyId,playerId,time)=>{
+   
+    const lobby = lobbies[lobbyId];
+    const playerIndex = lobby.players.findIndex((player) => player.id.includes(socket.id));
+    if(time<=0)
+      {
+        disconnectForGood(lobbyId,playerId);
+        return;
+      }
+    if(!lobby.players[playerIndex].disconnected)
+    {
+      return;
     }
-    console.log(`Player ${playerId} left lobby ${lobbyId}`);
-    
-  });
+    if (!lobby.players[playerIndex]){
+      return;
+    }
+    setTimeout(() => {
+      
+    if (!lobby.players[playerIndex]){
+      return;
+    }
+      console.log("waiting for "+ lobby.players[playerIndex].id + " seconds remaining : "+ time )
+      lobby.players[playerIndex].timeToReconnect=time-1;
+      lobbies[lobbyId].players.forEach(player => {
+        player.id.forEach(socketId => {
+          io.to(socketId).emit('updateLobby', lobbies[lobbyId].players);
+        });
+      });;
+      CheckForDisconnection(lobbyId,playerId,time-1);
+    }, 1000);
+  }
   socket.on('disconnect', () => {
-    console.log(`Player ${socket.id} disconnected`);
     ownerDisconnected = false;
-    /*
     for (const lobbyId in lobbies) {
       const lobby = lobbies[lobbyId];
-      const playerIndex = lobby.players.findIndex((player) => player.id.includes(socket.id));
-     
-      if (playerIndex !== -1) {
-        if(lobby.players[playerIndex].playerInfo.owner){
-          ownerDisconnected=true
-        }
-        lobby.players.splice(playerIndex, 1);
-        lobbies[lobbyId].players.forEach(player => {
-  player.id.forEach(socketId => {
-    io.to(socketId).emit('updateLobby', lobbies[lobbyId].players);
-  });
-});; 
-        if (lobby.players.length === 0) {
-          delete lobbies[lobbyId];
-        }else if(ownerDisconnected){
-          lobbies[lobbyId].players[0].playerInfo.owner=true;
-        }
-        
-        console.log(`Player ${socket.id} disconnected and removed from lobby ${lobbyId}`);
-        break; 
-      }
-  }*/ });
+    const playerIndex = lobby.players.findIndex((player) => player.id.includes(socket.id));
+    if(playerIndex !== -1){
+      
+    console.log(`Player ${socket.id} disconnected and waiting for reconnection`);
+      lobby.players[playerIndex].disconnected=true;
+      CheckForDisconnection(lobbyId,socket.id,60);
+      return;
+    }
+    
+    console.log(`Player ${socket.id} disconnected`);
+  }
+   });
 
 
 });
