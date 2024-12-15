@@ -173,8 +173,12 @@ io.on('connection', (socket) => {
       started,
       Dice: 0,
       showPopUp: false,
+      showNumberPopUp:false,
+      submittedNumberAnswers:[],
+      numberSubmittedAnswers:0,
       SubmittedAnswer: "",
       currentResult: "",
+      round:0,
     };
     lobbies[lobbyId] = lobbyData;
     console.log("lobby created with code : "+lobbyId)
@@ -193,6 +197,13 @@ io.on('connection', (socket) => {
     const multipleChoiceKeys = Object.keys(Quizzes.MultipleChoices);
     const randomIndex = Math.floor(Math.random() * multipleChoiceKeys.length);
     const randomQuiz = Quizzes.MultipleChoices[multipleChoiceKeys[randomIndex]];
+    return randomQuiz;
+  }
+  
+  function getRandomNumberQuiz() {
+    const DatesKeys = Object.keys(Quizzes.Dates);
+    const randomIndex = Math.floor(Math.random() * DatesKeys.length);
+    const randomQuiz = Quizzes.Dates[DatesKeys[randomIndex]];
     return randomQuiz;
   }
   
@@ -392,6 +403,13 @@ socket.on('getLobbyPlayers', ({ lobbyId }) => {
     }
   });
   
+  socket.on('openNumberQuiz', ({ lobbyId },callback) => {
+    const lobby = lobbies[lobbyId];
+    
+    if (lobby) {
+      return callback({ popUp:lobby.showNumberPopUp });
+    }
+  });
   socket.on('getSubmittedAnswer', ({ lobbyId },callback) => {
     const lobby = lobbies[lobbyId];
     
@@ -407,6 +425,38 @@ socket.on('getLobbyPlayers', ({ lobbyId }) => {
       return callback({ res:lobby.currentResult });
     }
   });
+  socket.on('submitNumberAnswer', ({ lobbyId,choice }) => {
+    if (!lobbies[lobbyId]) {
+      delete lobbies[lobbyId];
+      return;
+    }
+    
+    if (!lobbies[lobbyId].players) {
+      delete lobbies[lobbyId];
+      return;
+    }
+    
+    lobbies[lobbyId].submittedNumberAnswers[lobbies[lobbyId].numberSubmittedAnswers]={id:socket.id ,name : lobbies[lobbyId].players.find(player => player.id.includes(socket.id)).playerInfo.name.toString(),answer : choice};
+    lobbies[lobbyId].numberSubmittedAnswers++; 
+    lobbies[lobbyId].players.find(player => player.id.includes(socket.id)).toAnswer=false;
+    lobbies[lobbyId].players.forEach(player => {
+  player.id.forEach(socketId => {
+    io.to(socketId).emit('numberChoiceUpdate',  lobbies[lobbyId].players);
+  });
+
+
+});})
+
+socket.on('getNumberSubmittedAnswer', ({ lobbyId },callback) => {
+  const lobby = lobbies[lobbyId];
+  let array = [];
+  if (lobby) {
+   
+    console.log(lobby.submittedNumberAnswers);
+    return callback({ subAnsw: lobby.submittedNumberAnswers });
+  }
+});
+  
   socket.on('submitAnswer', ({ lobbyId,choice }) => {
     if (!lobbies[lobbyId]) {
       delete lobbies[lobbyId];
@@ -695,7 +745,21 @@ socket.on('getLobbyPlayers', ({ lobbyId }) => {
     lobby.currentResult=""
     console.log("next turn " )
     if (lobby) {
-      const currentIndex = lobby.players.findIndex(player => player.id==playerId);
+      lobby.round++;
+      if(lobby.round>=lobby.players.length){
+        
+    const randomQuiz = getRandomNumberQuiz();
+    lobbyQuizzes[lobbyId] = randomQuiz;
+      
+    lobby.showNumberPopUp=true;
+    lobbies[lobbyId].players.forEach(player=>player.toAnswer=true);
+    lobbies[lobbyId].players.forEach(player => {
+  player.id.forEach(socketId => {
+    io.to(socketId).emit('updateLobby', lobbies[lobbyId].players);
+  })});
+      }
+      const currentIndex = lobby.players.findIndex(player => player.id.includes(playerId));
+      
       
       if (currentIndex !== -1) {
         lobby.players[currentIndex].turn = false;

@@ -824,217 +824,206 @@ const Quizzes = {
   },
   Dates: {
     1: {
-      Question:
-        "When did Cristiano Ronaldo make his debut for Manchester United?",
-      CorrectAnswer: "2003",
+      Question: "When did Cristiano Ronaldo make his debut for Manchester United?",
+      CorrectAnswer: 2003,
     },
     2: {
       Question: "When did Lionel Messi score his first goal for Barcelona?",
-      CorrectAnswer: "2005",
+      CorrectAnswer: 2005,
     },
     3: {
       Question: "When did Zinedine Zidane retire from football?",
-      CorrectAnswer: "2006",
+      CorrectAnswer: 2006,
     },
     4: {
       Question: "When did Paris Saint-Germain win their first Ligue 1 title?",
-      CorrectAnswer: "1986",
+      CorrectAnswer: 1986,
     },
     5: {
-      Question:
-        "When did AC Milan win their first UEFA Champions League title?",
-      CorrectAnswer: "1963",
+      Question: "When did AC Milan win their first UEFA Champions League title?",
+      CorrectAnswer: 1963,
     },
     6: {
       Question: "When did Robert Lewandowski join Bayern Munich?",
-      CorrectAnswer: "2014",
+      CorrectAnswer: 2014,
     },
     7: {
-      Question:
-        "When did Real Madrid win their first European Cup (now known as the UEFA Champions League)?",
-      CorrectAnswer: "1956",
+      Question: "When did Real Madrid win their first European Cup (now known as the UEFA Champions League)?",
+      CorrectAnswer: 1956,
     },
     8: {
-      Question:
-        "When did Kylian Mbappé make his debut for Paris Saint-Germain?",
-      CorrectAnswer: "2017",
+      Question: "When did Kylian Mbappé make his debut for Paris Saint-Germain?",
+      CorrectAnswer: 2017,
     },
     9: {
       Question: "When did Juventus sign Cristiano Ronaldo?",
-      CorrectAnswer: "2018",
+      CorrectAnswer: 2018,
     },
     10: {
       Question: "When did Diego Maradona pass away?",
-      CorrectAnswer: "2020",
+      CorrectAnswer: 2020,
     },
     11: {
       Question: "When did Zlatan Ibrahimović join Manchester United?",
-      CorrectAnswer: "2016",
+      CorrectAnswer: 2016,
     },
     12: {
-      Question:
-        "When did Bayern Munich win the treble (Bundesliga, DFB-Pokal, and UEFA Champions League)?",
-      CorrectAnswer: "2020",
+      Question: "When did Bayern Munich win the treble (Bundesliga, DFB-Pokal, and UEFA Champions League)?",
+      CorrectAnswer: 2020,
     },
     13: {
       Question: "When did Chelsea win their first Premier League title?",
-      CorrectAnswer: "2005",
+      CorrectAnswer: 2005,
     },
     14: {
-      Question:
-        "When did Manchester City win their first Premier League title?",
-      CorrectAnswer: "2012",
+      Question: "When did Manchester City win their first Premier League title?",
+      CorrectAnswer: 2012,
     },
     15: {
       Question: "When did Thierry Henry leave Arsenal for Barcelona?",
-      CorrectAnswer: "2007",
+      CorrectAnswer: 2007,
     },
     16: {
       Question: "When did Lionel Messi win his first Ballon d'Or?",
-      CorrectAnswer: "2009",
+      CorrectAnswer: 2009,
     },
     17: {
       Question: "When did France win the FIFA World Cup for the second time?",
-      CorrectAnswer: "2018",
+      CorrectAnswer: 2018,
     },
     18: {
       Question: "When did David Beckham retire from football?",
-      CorrectAnswer: "2013",
+      CorrectAnswer: 2013,
     },
     19: {
       Question: "When did the South Africa FIFA World Cup take place?",
-      CorrectAnswer: "2010",
+      CorrectAnswer: 2010,
     },
     20: {
       Question: "When did the Premier League start?",
-      CorrectAnswer: "1992",
+      CorrectAnswer: 1992,
     },
     21: {
       Question: "When did AC Milan last win the UEFA Champions League?",
-      CorrectAnswer: "2007",
+      CorrectAnswer: 2007,
     },
     22: {
       Question: "When did Arsenal last win the Premier League?",
-      CorrectAnswer: "2004",
+      CorrectAnswer: 2004,
     },
     23: {
-      Question:
-        "When did Wayne Rooney make his Premier League debut for Everton?",
-      CorrectAnswer: "2002",
+      Question: "When did Wayne Rooney make his Premier League debut for Everton?",
+      CorrectAnswer: 2002,
     },
     24: {
       Question: "When did the FIFA Women's World Cup begin?",
-      CorrectAnswer: "1991",
+      CorrectAnswer: 1991,
     },
     25: {
       Question: "When did Tottenham Hotspur last win the FA Cup?",
-      CorrectAnswer: "1991",
+      CorrectAnswer: 1991,
     },
     26: {
-      Question:
-        "When did Manchester United win the UEFA Champions League with Sir Alex Ferguson as manager?",
-      CorrectAnswer: "1999",
+      Question: "When did Manchester United win the UEFA Champions League with Sir Alex Ferguson as manager?",
+      CorrectAnswer: 1999,
     },
     27: {
-      Question:
-        "When did Argentina win the FIFA World Cup for the second time?",
-      CorrectAnswer: "2022",
+      Question: "When did Argentina win the FIFA World Cup for the second time?",
+      CorrectAnswer: 2022,
     },
     28: {
-      Question:
-        "When did Cristiano Ronaldo leave Juventus to return to Manchester United?",
-      CorrectAnswer: "2021",
+      Question: "When did Cristiano Ronaldo leave Juventus to return to Manchester United?",
+      CorrectAnswer: 2021,
     },
     29: {
       Question: "When did Barcelona last win the La Liga title?",
-      CorrectAnswer: "2019",
+      CorrectAnswer: 2019,
     },
     30: {
       Question: "When did Paris Saint-Germain sign Neymar from Barcelona?",
-      CorrectAnswer: "2017",
+      CorrectAnswer: 2017,
     },
     31: {
       Question: "When did Italy win the UEFA European Championship?",
-      CorrectAnswer: "2020",
+      CorrectAnswer: 2020,
     },
     32: {
-      Question:
-        "When did Chelsea win the UEFA Champions League for the first time?",
-      CorrectAnswer: "2012",
+      Question: "When did Chelsea win the UEFA Champions League for the first time?",
+      CorrectAnswer: 2012,
     },
     33: {
       Question: "When did Kylian Mbappé win the FIFA World Cup with France?",
-      CorrectAnswer: "2018",
+      CorrectAnswer: 2018,
     },
     34: {
       Question: "When did Luis Suárez move from Liverpool to Barcelona?",
-      CorrectAnswer: "2014",
+      CorrectAnswer: 2014,
     },
     35: {
       Question: "When did Real Madrid sign Gareth Bale?",
-      CorrectAnswer: "2013",
+      CorrectAnswer: 2013,
     },
     36: {
       Question: "When did Roberto Firmino join Liverpool?",
-      CorrectAnswer: "2015",
+      CorrectAnswer: 2015,
     },
     37: {
       Question: "When did Sergio Ramos make his debut for Real Madrid?",
-      CorrectAnswer: "2005",
+      CorrectAnswer: 2005,
     },
     38: {
       Question: "When did Neymar transfer to Paris Saint-Germain?",
-      CorrectAnswer: "2017",
+      CorrectAnswer: 2017,
     },
     39: {
       Question: "When did Manchester United last win the Premier League?",
-      CorrectAnswer: "2013",
+      CorrectAnswer: 2013,
     },
     40: {
       Question: "When did the 2018 FIFA World Cup take place?",
-      CorrectAnswer: "2018",
+      CorrectAnswer: 2018,
     },
     41: {
       Question: "When did David Villa retire from football?",
-      CorrectAnswer: "2019",
+      CorrectAnswer: 2019,
     },
     42: {
       Question: "When did Paris Saint-Germain sign Lionel Messi?",
-      CorrectAnswer: "2021",
+      CorrectAnswer: 2021,
     },
     43: {
-      Question:
-        "When did the Premier League change its name from the Football League First Division?",
-      CorrectAnswer: "1992",
+      Question: "When did the Premier League change its name from the Football League First Division?",
+      CorrectAnswer: 1992,
     },
     44: {
       Question: "When did James Rodríguez join Bayern Munich?",
-      CorrectAnswer: "2017",
+      CorrectAnswer: 2017,
     },
     45: {
       Question: "When did Gianluigi Buffon retire from international football?",
-      CorrectAnswer: "2018",
+      CorrectAnswer: 2018,
     },
     46: {
       Question: "When did Andrea Pirlo retire from football?",
-      CorrectAnswer: "2017",
+      CorrectAnswer: 2017,
     },
     47: {
       Question: "When did Portugal win the UEFA European Championship?",
-      CorrectAnswer: "2016",
+      CorrectAnswer: 2016,
     },
     48: {
       Question: "When did Germany win the FIFA World Cup for the fourth time?",
-      CorrectAnswer: "2014",
+      CorrectAnswer: 2014,
     },
     49: {
       Question: "When did Cristiano Ronaldo win his first Ballon d'Or?",
-      CorrectAnswer: "2008",
+      CorrectAnswer: 2008,
     },
     50: {
       Question: "When did Mohamed Salah join Liverpool?",
-      CorrectAnswer: "2017",
+      CorrectAnswer: 2017,
     },
+    
   },
 };
 
