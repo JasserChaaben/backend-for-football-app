@@ -944,7 +944,7 @@ const Quizzes = {
       CorrectAnswer: 2017,
     },
     31: {
-      Question: "When did Italy win the UEFA European Championship?",
+      Question: "When did Italy win the lastest EURO?",
       CorrectAnswer: 2020,
     },
     32: {

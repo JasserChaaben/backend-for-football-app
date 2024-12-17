@@ -102,10 +102,23 @@ const Grid = {
   89: "Final",
   90: "Winner",
 };
+const Awards = {
+  0: "All players go back to start position",
+  1: "Move forward 3 spaces",
+  2: "Move others 3 spaces backward",
+  3: "Gain immunity from penalties for 1 turn",
+  4: "Get your turn immediately",
+  5: "Move to the space just before the leader",
+  6: "All players move forward 2 spaces",
+  7: "Steal 3 spaces from the player ahead of you",
+  8: "Next dice roll, double your result",
+};
 
 const Quizzes = require('./Quizzes');
 
 const lobbyQuizzes = {}; 
+
+const lobbyAwards = {}; 
 
 let users = {};
 
@@ -118,23 +131,22 @@ io.on('connection', (socket) => {
   console.log('A user connected:', socket.id);
   socket.on('restoreSession', ({ userID }) => {
     const user = users[userID];
-    console.log(userID);
-    console.log(user);
 
     if (user) {
       const lobby = lobbies[user.lobbyId];
 
-      console.log(lobby);
       if (lobby) {
         const playerIndex = lobby.players.findIndex(player => player.id.includes(userID));
 
 
-        console.log(playerIndex);
         if (playerIndex != -1) { 
           
           lobby.players[playerIndex].id.push(socket.id);
           lobby.players[playerIndex].disconnected=false;
-
+          if(lobby.playerToAward.id==userID)
+          {
+            lobby.playerToAward.id=socket.id;
+          }
           users[socket.id] = { 
             name: lobby.players[playerIndex].playerInfo.name, 
             lobbyId:user.lobbyId
@@ -167,7 +179,9 @@ io.on('connection', (socket) => {
         turn: true,
         toAnswer: false,
         disconnected: false,
-        timeToReconnect:0
+        timeToReconnect:0,
+        imune:false,
+        Double:false
       }],
       isPrivate,
       started,
@@ -179,7 +193,11 @@ io.on('connection', (socket) => {
       SubmittedAnswer: "",
       currentResult: "",
       round:0,
-      Timer:0
+      Timer:0,
+      playerToAward:{id:null,name:null},
+      showAwards:false,
+      LastChoosedAward:"",
+      timeToGetReward:false
     };
     lobbies[lobbyId] = lobbyData;
     console.log("lobby created with code : "+lobbyId)
@@ -206,6 +224,12 @@ io.on('connection', (socket) => {
     const randomIndex = Math.floor(Math.random() * DatesKeys.length);
     const randomQuiz = Quizzes.Dates[DatesKeys[randomIndex]];
     return randomQuiz;
+  }
+  function getRandomAwards() {
+    
+    const awardValues = Object.values(Awards); 
+  const shuffledAwards = awardValues.sort(() => Math.random() - 0.5); 
+  return shuffledAwards.slice(0, 4); 
   }
   
   socket.on('startGame', ({ lobbyId }, callback) => {
@@ -359,7 +383,7 @@ io.on('connection', (socket) => {
       return callback({ success: false, message: 'Lobby is full' });
     }
   
-    lobby.players.push({ id: [socket.id], playerInfo, position: 1, turn: false, toAnswer: false , disconnected: false,timeToReconnect:0});
+    lobby.players.push({ id: [socket.id], playerInfo, position: 1, turn: false, toAnswer: false , disconnected: false,timeToReconnect:0,imune:false});
     socket.join(lobbyId);
     users[socket.id] = { 
       name: playerInfo.name, 
@@ -419,6 +443,21 @@ socket.on('getLobbyPlayers', ({ lobbyId }) => {
     }
   });
   
+  socket.on('getPlayerAwarded', ({ lobbyId },callback) => {
+    const lobby = lobbies[lobbyId];
+    
+    if (lobby) {
+      return callback({ playerAwarded:lobby.playerToAward });
+    }
+  });
+  socket.on('getMyAward', ({ lobbyId },callback) => {
+    const lobby = lobbies[lobbyId];
+  
+    if (lobby) {
+      return callback({ res:lobby.playerToAward.id==socket.id&&lobby.timeToGetReward });
+    }
+  });
+  
   socket.on('getcurrentResult', ({ lobbyId },callback) => {
     const lobby = lobbies[lobbyId];
     
@@ -444,16 +483,100 @@ socket.on('getLobbyPlayers', ({ lobbyId }) => {
   player.id.forEach(socketId => {
     io.to(socketId).emit('numberChoiceUpdate',  lobbies[lobbyId].players);
   });
+  
 
+});
 
-});})
+if(lobbies[lobbyId].numberSubmittedAnswers>=lobbies[lobbyId].players.length){
+  setTimeout(()=>{EvaluateAnswers(lobbyId)},1000)
+}
+})
+function EvaluateAnswers(lobbyId){
+  if (!lobbies[lobbyId]) {
+    delete lobbies[lobbyId];
+    return;
+  }
+  
+  if (!lobbies[lobbyId].players) {
+    delete lobbies[lobbyId];
+    return;
+  }
+  
+  let array =  lobbies[lobbyId].submittedNumberAnswers;
+  let correctAns = lobbyQuizzes[lobbyId].CorrectAnswer;
+  const Winner=determineWinner(array, correctAns);
+
+  lobbies[lobbyId].currentResult= "Correct Answer is "+correctAns+"\n"+Winner.name+" Wins this round" ;
+
+  lobbies[lobbyId].players.forEach(player => {
+    player.id.forEach(socketId => {
+      io.to(socketId).emit('numberChoiceUpdate',  lobbies[lobbyId].players);
+    });
+    
+  
+  });
+  
+  setTimeout(()=>{AwardThePlayer(lobbyId,Winner.id)},1500)
+}
+function AwardThePlayer(lobbyId,playerId){
+  if (!lobbies[lobbyId]) {
+    delete lobbies[lobbyId];
+    return;
+  }
+  
+  if (!lobbies[lobbyId].players) {
+    delete lobbies[lobbyId];
+    return;
+  }
+  lobbyAwards[lobbyId]=getRandomAwards();
+  lobbies[lobbyId].showNumberPopUp=false;
+  lobbies[lobbyId].timeToGetReward=true;
+  lobbies[lobbyId].playerToAward.id=playerId;
+  lobbies[lobbyId].playerToAward.name=lobbies[lobbyId].players.find((p)=>p.id==playerId).playerInfo;
+  lobbies[lobbyId].showAwards=true;
+  lobbies[lobbyId].players.forEach(player => {
+    player.id.forEach(socketId => {
+      io.to(socketId).emit('updateLobby', lobbies[lobbyId].players);
+    });
+  });
+  
+}
+
+socket.on('getAwards', ({ lobbyId },callback) => {
+  const lobby = lobbies[lobbyId];
+  if (lobby) {
+    return callback({ awards: lobbyAwards[lobbyId] });
+  }
+});
+socket.on('getShowAwards', ({ lobbyId },callback) => {
+  const lobby = lobbies[lobbyId];
+  if (lobby) {
+   
+    return callback({ showAwards: lobby.showAwards });
+  }
+});
+function determineWinner(array, correctAns) {
+  let winnerId = null;
+  let closestDifference = Infinity;
+
+  for (let entry of array) {
+      const difference = Math.abs(entry.answer - correctAns);
+
+      if (difference < closestDifference) {
+          closestDifference = difference;
+          winnerId = entry;
+      }
+  }
+
+  return winnerId;
+}
+
 
 socket.on('getNumberSubmittedAnswer', ({ lobbyId },callback) => {
   const lobby = lobbies[lobbyId];
   let array = [];
   if (lobby) {
    
-    console.log(lobby.submittedNumberAnswers);
     return callback({ subAnsw: lobby.submittedNumberAnswers });
   }
 });
@@ -475,8 +598,6 @@ socket.on('getNumberSubmittedAnswer', ({ lobbyId },callback) => {
     io.to(socketId).emit('multipleChoicesUpdate',  lobbies[lobbyId].players);
   });
 });
-    console.log("choice"+choice);
-    console.log("SubmittedAnswer "+lobbies[lobbyId].SubmittedAnswer)
     const player= lobbies[lobbyId].players.find((p) => p.id.includes(socket.id));
     let result ="";
     if(!player.toAnswer)
@@ -556,6 +677,224 @@ socket.on('getNumberSubmittedAnswer', ({ lobbyId },callback) => {
        
     }}, 5000);
   });
+  socket.on('submitAward', ({ lobbyId,choice }) => {
+    if (!lobbies[lobbyId]) {
+      delete lobbies[lobbyId];
+      return;
+    }
+    
+    if (!lobbies[lobbyId].players) {
+      delete lobbies[lobbyId];
+      return;
+    }
+    
+    lobbies[lobbyId].timeToGetReward=false;
+    lobbies[lobbyId].LastChoosedAward=choice;
+    lobbies[lobbyId].players.forEach(player => {
+      player.id.forEach(socketId => {
+        io.to(socketId).emit('awardsUpdate', lobbies[lobbyId].players);
+      });
+    });
+
+
+    setTimeout(()=>{ ActivateReward(socket.id,lobbyId,choice) },2000)
+  });
+
+  function ActivateReward(playerId,lobbyId,choice){
+    if (!lobbies[lobbyId]) {
+      delete lobbies[lobbyId];
+      return;
+    }
+    
+    if (!lobbies[lobbyId].players) {
+      delete lobbies[lobbyId];
+      return;
+    }
+
+    lobbies[lobbyId].round=-1;
+
+    
+    
+    lobbies[lobbyId].submittedNumberAnswers=[];
+    lobbies[lobbyId].numberSubmittedAnswers=0;
+
+    lobbies[lobbyId].currentResult=""
+    lobbies[lobbyId].showAwards=false;
+
+    switch (choice) {
+      case "All players go back to start position":
+        lobbies[lobbyId].players.forEach((p) => {
+          const lastId = p.id[p.id.length - 1];
+          movePlayerReverseWithoutNextTurn(lastId, p.position - 1, lobbyId, 1);
+        });
+        setTimeout(() => {
+          goToNextTurn(playerId, lobbyId);
+        }, 5000);
+        break;
+    
+      case "Move forward 3 spaces":
+        movePlayerAtEndWithoutNextTurn(playerId, 3, lobbyId, 1);
+        setTimeout(() => {
+          goToNextTurn(playerId, lobbyId);
+        }, 3000);
+        break;
+    
+      case "Move others 3 spaces backward":
+        lobbies[lobbyId].players.forEach((p) => {
+          
+          const lastId = p.id[p.id.length - 1];
+          if (lastId !== playerId) {
+            movePlayerReverseWithoutNextTurn(lastId, 3, lobbyId, 1);
+          }
+        });
+        setTimeout(() => {
+          goToNextTurn(playerId, lobbyId);
+        }, 3000);
+        break;
+    
+      case "Gain immunity from penalties for 1 turn":
+        const player = lobbies[lobbyId].players.find((p) => p.id.includes(playerId));
+        if (player) player.imune = true;
+        goToNextTurn(playerId, lobbyId);
+        break;
+    
+      case "Get your turn immediately":
+        lobbies[lobbyId].players.forEach((p) => (p.turn = false)); // Reset all turns
+        const currentPlayer = lobbies[lobbyId].players.find((p) => p.id.includes(playerId));
+        if (currentPlayer) currentPlayer.turn = true; // Set current player’s turn
+        break;
+    
+      case "Move to the space just before the leader":
+        const leaderPosition = getLeaderPos(lobbyId);
+        const currentPos = lobbies[lobbyId].players.find((p) => p.id.includes(playerId))?.position || 1;
+        movePlayerAtEndWithoutNextTurn(playerId, leaderPosition - currentPos - 1, lobbyId, 1);
+        setTimeout(() => {
+          goToNextTurn(playerId, lobbyId);
+        }, 5000);
+        break;
+    
+      case "All players move forward 2 spaces":
+        lobbies[lobbyId].players.forEach((p) => 
+        {
+          const lastId = p.id[p.id.length - 1];
+          movePlayerAtEndWithoutNextTurn(lastId, 2, lobbyId, 1)}
+        );
+        setTimeout(() => {
+          goToNextTurn(playerId, lobbyId);
+        }, 2000);
+        break;
+    
+      case "Steal 3 spaces from the player ahead of you":
+        const nextPlayerId = getNextId(lobbyId, playerId);
+        if (nextPlayerId) {
+          movePlayerReverseWithoutNextTurn(nextPlayerId, 3, lobbyId, 1);
+          movePlayerAtEndWithoutNextTurn(playerId, 3, lobbyId, 1);
+        }
+        setTimeout(() => {
+          goToNextTurn(playerId, lobbyId);
+        }, 3000);
+        break;
+    
+      case "Next dice roll, double your result":
+        const dicePlayer = lobbies[lobbyId].players.find((p) => p.id.includes(playerId));
+        if (dicePlayer) dicePlayer.Double = true;
+        goToNextTurn(playerId, lobbyId);
+        break;
+    
+      default:
+        break;
+    }
+    
+    lobbies[lobbyId].players.forEach(player => {
+      player.id.forEach(socketId => {
+        io.to(socketId).emit('updateLobby', lobbies[lobbyId].players);
+      });
+    });
+    
+  }
+  function getLeaderPos(lobbyId){
+    if (!lobbies[lobbyId] || !lobbies[lobbyId].players) {
+      return null; 
+    }
+  
+    const players = lobbies[lobbyId].players;
+    let leaderPosition = -Infinity;
+  
+    for (const player of players) {
+      if (player.position > leaderPosition) {
+        leaderPosition = player.position;
+      }
+    }
+  
+    return leaderPosition;
+  }
+
+  function getNextId(lobbyId, currentPlayerId) {
+    if (!lobbies[lobbyId] || !lobbies[lobbyId].players) {
+      return null; 
+    }
+  
+    const players = lobbies[lobbyId].players;
+  
+    const currentPlayer = players.find(player => player.id.includes(currentPlayerId));
+    if (!currentPlayer) {
+      return null; 
+    }
+    const currentPosition = currentPlayer.position;
+  
+    let nextPlayerId = null;
+    let nextPlayerPosition = Infinity;
+  
+    for (const player of players) {
+      if (
+        !player.id.includes(currentPlayerId) && 
+        player.position >= currentPosition && 
+        player.position < nextPlayerPosition 
+      ) {
+        nextPlayerId = player.id[player.id.length - 1]; 
+        nextPlayerPosition = player.position;
+      }
+    }
+  
+    return nextPlayerId;
+  }
+  
+  
+  function movePlayerReverseWithoutNextTurn(playerId, diceRoll, lobbyId,first) {
+    
+    const lobby = lobbies[lobbyId];
+    if (!lobbies[lobbyId]) {
+      delete lobbies[lobbyId];
+      return;
+    }
+    
+    if (!lobbies[lobbyId].players) {
+      delete lobbies[lobbyId];
+      return;
+    }
+    const player = lobby.players.find((player) => player.id.includes(playerId));
+   
+    if(first>diceRoll||player.position==1)
+    {
+    return;
+    }
+    if (!player) {
+      console.error('Player not found in lobby');
+      return;
+    }
+
+    player.position -= 1; 
+    setTimeout(() => {
+      movePlayerReverseWithoutNextTurn(playerId, diceRoll, lobbyId,first+1);
+    }, 250);
+    lobbies[lobbyId].players.forEach(player => {
+  player.id.forEach(socketId => {
+    io.to(socketId).emit('updateLobby', lobbies[lobbyId].players);
+  });
+});
+  }
+  
+
 
   function movePlayerReverse(playerId, diceRoll, lobbyId,first) {
     
@@ -612,10 +951,9 @@ socket.on('getNumberSubmittedAnswer', ({ lobbyId },callback) => {
     const min = 1;
     const max = 6;
     const diceRoll = Math.floor(Math.random() * (max - min + 1)) + min;
-    console.log(diceRoll);
     lobbies[lobbyId].Dice = diceRoll;
-    console.log(lobbies[lobbyId].Dice);
-    
+    if( lobbies[lobbyId].players.find((p) => p.id.includes(socket.id)).Double)
+      diceRoll=diceRoll*2;
     lobbies[lobbyId].players.forEach(player => {
   player.id.forEach(socketId => {
     io.to(socketId).emit('updateLobby', lobbies[lobbyId].players);
@@ -632,6 +970,44 @@ socket.on('getNumberSubmittedAnswer', ({ lobbyId },callback) => {
         [array[i], array[j]] = [array[j], array[i]]; // Swap elements
     }
 }
+
+function movePlayerAtEndWithoutNextTurn(playerId, diceRoll, lobbyId,first) {
+  if (!lobbies[lobbyId]) {
+    delete lobbies[lobbyId];
+    return;
+  }
+  
+  if (!lobbies[lobbyId].players) {
+    delete lobbies[lobbyId];
+    return;
+  }
+  if(first>diceRoll)
+    {
+    return;
+    }
+  const lobby = lobbies[lobbyId];
+  const player = lobby.players.find((p) => p.id.includes(playerId));
+  if(player.position>=90)
+  {
+    return;
+  }
+  if (!player) {
+    return;
+  }
+
+  player.position += 1; 
+  setTimeout(() => {
+    
+    movePlayerAtEndWithoutNextTurn(socket.id, diceRoll, lobbyId, first+1);
+  }, 250);
+  lobbies[lobbyId].players.forEach(player => {
+player.id.forEach(socketId => {
+  io.to(socketId).emit('updateLobby', lobbies[lobbyId].players);
+});
+});
+}
+
+
 
   function movePlayerAtEnd(playerId, diceRoll, lobbyId,first) {
     if (!lobbies[lobbyId]) {
@@ -653,11 +1029,9 @@ socket.on('getNumberSubmittedAnswer', ({ lobbyId },callback) => {
     const player = lobby.players.find((p) => p.id.includes(playerId));
     if(player.position>=90)
     {
-      console.log(player.playerInfo.name + " has won the game ")
       return;
     }
     if (!player) {
-      console.error('Player not found in lobby');
       return;
     }
   
@@ -868,11 +1242,11 @@ socket.on('getNumberSubmittedAnswer', ({ lobbyId },callback) => {
       delete lobbies[lobbyId];
       return;
     }
+
     lobby.currentResult=""
-    console.log("next turn " )
     if (lobby) {
       lobby.round++;
-      if(lobby.round>=lobby.players.length){
+    if(lobby.round>=lobby.players.length){
         
     const randomQuiz = getRandomNumberQuiz();
     lobbyQuizzes[lobbyId] = randomQuiz;
@@ -883,6 +1257,7 @@ socket.on('getNumberSubmittedAnswer', ({ lobbyId },callback) => {
   player.id.forEach(socketId => {
     io.to(socketId).emit('updateLobby', lobbies[lobbyId].players);
   })});
+  return;
       }
       const currentIndex = lobby.players.findIndex(player => player.id.includes(playerId));
       
@@ -898,7 +1273,7 @@ socket.on('getNumberSubmittedAnswer', ({ lobbyId },callback) => {
   player.id.forEach(socketId => {
     io.to(socketId).emit('updateLobby', lobbies[lobbyId].players);
   });
-});;
+});
   }
 }
   socket.on('getDice', ({ lobbyId }, callback) => {
@@ -919,6 +1294,21 @@ socket.on('getNumberSubmittedAnswer', ({ lobbyId },callback) => {
     }
   });
 
+  socket.on('getAwardChosen', ({ lobbyId }, callback) => {
+    if (!lobbies[lobbyId]) {
+      delete lobbies[lobbyId];
+      return;
+    }
+    
+    if (!lobbies[lobbyId].players) {
+      delete lobbies[lobbyId];
+      return;
+    }
+    
+    if (lobbies[lobbyId]) {
+      callback({ chosen: lobbies[lobbyId].LastChoosedAward });
+    } 
+  });
   socket.on('getTimer', ({ lobbyId }, callback) => {
     if (!lobbies[lobbyId]) {
       delete lobbies[lobbyId];
@@ -1008,7 +1398,6 @@ player.id.forEach(socketId => {
     if (!lobby.players[playerIndex]){
       return;
     }
-      console.log("waiting for "+ lobby.players[playerIndex].id + " seconds remaining : "+ time )
       lobby.players[playerIndex].timeToReconnect=time-1;
       lobbies[lobbyId].players.forEach(player => {
         player.id.forEach(socketId => {
