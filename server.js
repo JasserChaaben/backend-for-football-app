@@ -532,7 +532,7 @@ function AwardThePlayer(lobbyId,playerId){
   lobbies[lobbyId].showNumberPopUp=false;
   lobbies[lobbyId].timeToGetReward=true;
   lobbies[lobbyId].playerToAward.id=playerId;
-  lobbies[lobbyId].playerToAward.name=lobbies[lobbyId].players.find((p)=>p.id==playerId).playerInfo;
+  lobbies[lobbyId].playerToAward.name=lobbies[lobbyId].players.find((p)=>p.id.includes(playerId)).playerInfo;
   lobbies[lobbyId].showAwards=true;
   lobbies[lobbyId].players.forEach(player => {
     player.id.forEach(socketId => {
@@ -739,14 +739,14 @@ socket.on('getNumberSubmittedAnswer', ({ lobbyId },callback) => {
             }
         });
         setTimeout(() => {
-          goToNextTurn(playerId, lobbyId);
+          goToFirstTurn( lobbyId);
         }, 5000);
         break;
     
       case "Move forward 3 spaces":
         movePlayerAtEndWithoutNextTurn(playerId, 3, lobbyId, 1);
         setTimeout(() => {
-          goToNextTurn(playerId, lobbyId);
+          goToFirstTurn( lobbyId);
         }, 3000);
         break;
     
@@ -762,14 +762,14 @@ socket.on('getNumberSubmittedAnswer', ({ lobbyId },callback) => {
           }
         });
         setTimeout(() => {
-          goToNextTurn(playerId, lobbyId);
+          goToFirstTurn( lobbyId);
         }, 3000);
         break;
     
       case "Gain immunity from penalties for 1 turn":
         const player = lobbies[lobbyId].players.find((p) => p.id.includes(playerId));
         if (player) player.imune = true;
-        goToNextTurn(playerId, lobbyId);
+        goToFirstTurn( lobbyId);
         break;
     
       case "Get your turn immediately":
@@ -783,7 +783,7 @@ socket.on('getNumberSubmittedAnswer', ({ lobbyId },callback) => {
         const currentPos = lobbies[lobbyId].players.find((p) => p.id.includes(playerId))?.position || 1;
         movePlayerAtEndWithoutNextTurn(playerId, leaderPosition - currentPos - 1, lobbyId, 1);
         setTimeout(() => {
-          goToNextTurn(playerId, lobbyId);
+          goToFirstTurn( lobbyId);
         }, 5000);
         break;
     
@@ -794,7 +794,7 @@ socket.on('getNumberSubmittedAnswer', ({ lobbyId },callback) => {
           movePlayerAtEndWithoutNextTurn(lastId, 2, lobbyId, 1)}
         );
         setTimeout(() => {
-          goToNextTurn(playerId, lobbyId);
+          goToFirstTurn( lobbyId);
         }, 2000);
         break;
     
@@ -809,14 +809,14 @@ socket.on('getNumberSubmittedAnswer', ({ lobbyId },callback) => {
           movePlayerAtEndWithoutNextTurn(playerId, 3, lobbyId, 1);
         }}
         setTimeout(() => {
-          goToNextTurn(playerId, lobbyId);
+          goToFirstTurn( lobbyId);
         }, 3000);
         break;
     
       case "Next dice roll, double your result":
         const dicePlayer = lobbies[lobbyId].players.find((p) => p.id.includes(playerId));
         if (dicePlayer) dicePlayer.Double = true;
-        goToNextTurn(playerId, lobbyId);
+        goToFirstTurn( lobbyId);
         break;
     
       default:
@@ -1240,6 +1240,62 @@ player.id.forEach(socketId => {
       return;
     }
   }
+
+
+
+
+  function goToFirstTurn(lobbyId) {
+    const lobby = lobbies[lobbyId];
+    if (!lobbies[lobbyId]) {
+      delete lobbies[lobbyId];
+      return;
+    }
+    
+    if (!lobbies[lobbyId].players) {
+      delete lobbies[lobbyId];
+      return;
+    }
+    if (!lobby) {
+      delete lobbies[lobbyId];
+      return;
+    }
+    
+    if (!lobby.players) {
+      delete lobbies[lobbyId];
+      return;
+    }
+
+    lobby.currentResult=""
+    if (lobby) {
+      lobby.round++;
+    if(lobby.round>=lobby.players.length){
+        
+    const randomQuiz = getRandomNumberQuiz();
+    lobbyQuizzes[lobbyId] = randomQuiz;
+      
+    lobby.showNumberPopUp=true;
+    lobbies[lobbyId].players.forEach(player=>player.toAnswer=true);
+    lobbies[lobbyId].players.forEach(player => {
+  player.id.forEach(socketId => {
+    io.to(socketId).emit('updateLobby', lobbies[lobbyId].players);
+  })});
+  return;
+      }
+      
+      
+      lobby.players[0].turn = true;
+  
+      lobbies[lobbyId].players.forEach(player => {
+  player.id.forEach(socketId => {
+    io.to(socketId).emit('updateLobby', lobbies[lobbyId].players);
+  });
+});
+  }
+}
+
+
+
+
   function goToNextTurn(playerId, lobbyId) {
     const lobby = lobbies[lobbyId];
     if (!lobbies[lobbyId]) {
