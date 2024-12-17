@@ -653,6 +653,12 @@ socket.on('getNumberSubmittedAnswer', ({ lobbyId },callback) => {
             break;
         }
       } else {
+        if(player.imune)
+        {
+          lobbies[lobbyId].players.find((p) => p.id.includes(socket.id)).imune=false;
+          goToNextTurn(socket.id, lobbyId);
+          return
+        }
         switch (Grid[player.position]) {
           case "Training":
             goToNextTurn(socket.id, lobbyId);
@@ -725,7 +731,12 @@ socket.on('getNumberSubmittedAnswer', ({ lobbyId },callback) => {
       case "All players go back to start position":
         lobbies[lobbyId].players.forEach((p) => {
           const lastId = p.id[p.id.length - 1];
-          movePlayerReverseWithoutNextTurn(lastId, p.position - 1, lobbyId, 1);
+          if(lobbies[lobbyId].players.find((p) => p.id.includes(lastId)).imune)
+            {
+              lobbies[lobbyId].players.find((p) => p.id.includes(lastId)).imune=false;
+            }else{
+              movePlayerReverseWithoutNextTurn(lastId, p.position - 1, lobbyId, 1);
+            }
         });
         setTimeout(() => {
           goToNextTurn(playerId, lobbyId);
@@ -744,6 +755,9 @@ socket.on('getNumberSubmittedAnswer', ({ lobbyId },callback) => {
           
           const lastId = p.id[p.id.length - 1];
           if (lastId !== playerId) {
+            if(lobbies[lobbyId].players.find((p) => p.id.includes(lastId)).imune)
+                lobbies[lobbyId].players.find((p) => p.id.includes(lastId)).imune=false;
+              else
             movePlayerReverseWithoutNextTurn(lastId, 3, lobbyId, 1);
           }
         });
@@ -786,10 +800,14 @@ socket.on('getNumberSubmittedAnswer', ({ lobbyId },callback) => {
     
       case "Steal 3 spaces from the player ahead of you":
         const nextPlayerId = getNextId(lobbyId, playerId);
+        if(lobbies[lobbyId].players.find((p) => p.id.includes(nextPlayerId)).imune)
+          lobbies[lobbyId].players.find((p) => p.id.includes(nextPlayerId)).imune=false;
+        else
+        {
         if (nextPlayerId) {
           movePlayerReverseWithoutNextTurn(nextPlayerId, 3, lobbyId, 1);
           movePlayerAtEndWithoutNextTurn(playerId, 3, lobbyId, 1);
-        }
+        }}
         setTimeout(() => {
           goToNextTurn(playerId, lobbyId);
         }, 3000);
@@ -950,7 +968,7 @@ socket.on('getNumberSubmittedAnswer', ({ lobbyId },callback) => {
     lobbies[lobbyId].players.find((p) => p.id.includes(socket.id)).turn = false;
     const min = 1;
     const max = 6;
-    const diceRoll = Math.floor(Math.random() * (max - min + 1)) + min;
+    let diceRoll = Math.floor(Math.random() * (max - min + 1)) + min;
     lobbies[lobbyId].Dice = diceRoll;
     if( lobbies[lobbyId].players.find((p) => p.id.includes(socket.id)).Double)
       diceRoll=diceRoll*2;
