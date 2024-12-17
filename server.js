@@ -701,9 +701,12 @@ socket.on('getNumberSubmittedAnswer', ({ lobbyId },callback) => {
     lobby.showPopUp=true;
     player.toAnswer=true;
     lobby.Timer=10;
-     setTimeout(()=>{Countdown(lobbyId,playerId) ;  player.id.forEach(socketId => {
-        io.to(socketId).emit('multipleChoicesUpdate',  lobbies[lobbyId].players);
-      });},1000);
+    setTimeout(()=>{Countdown(lobbyId,playerId) ;
+        
+      lobbies[lobbyId].players.forEach(player => {
+      player.id.forEach(socketId => {
+      io.to(socketId).emit('multipleChoicesUpdate',  lobbies[lobbyId].players);
+    })});},1000);
     lobbies[lobbyId].players.forEach(player => {
   player.id.forEach(socketId => {
     io.to(socketId).emit('updateLobby', lobbies[lobbyId].players);
@@ -836,9 +839,12 @@ socket.on('getNumberSubmittedAnswer', ({ lobbyId },callback) => {
     if(lobby.Timer>0)
     {
       lobby.Timer--;
-      setTimeout(()=>{Countdown(lobbyId,playerId) ;  player.id.forEach(socketId => {
+      setTimeout(()=>{Countdown(lobbyId,playerId) ;
+        
+        lobbies[lobbyId].players.forEach(player => {
+        player.id.forEach(socketId => {
         io.to(socketId).emit('multipleChoicesUpdate',  lobbies[lobbyId].players);
-      });},1000);
+      })});},1000);
       return;
     }
   }
