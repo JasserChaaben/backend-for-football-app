@@ -179,6 +179,7 @@ io.on('connection', (socket) => {
       SubmittedAnswer: "",
       currentResult: "",
       round:0,
+      Timer:0
     };
     lobbies[lobbyId] = lobbyData;
     console.log("lobby created with code : "+lobbyId)
@@ -699,6 +700,10 @@ socket.on('getNumberSubmittedAnswer', ({ lobbyId },callback) => {
       
     lobby.showPopUp=true;
     player.toAnswer=true;
+    lobby.Timer=10;
+     setTimeout(()=>{Countdown(lobbyId,playerId) ;  player.id.forEach(socketId => {
+        io.to(socketId).emit('multipleChoicesUpdate',  lobbies[lobbyId].players);
+      });},1000);
     lobbies[lobbyId].players.forEach(player => {
   player.id.forEach(socketId => {
     io.to(socketId).emit('updateLobby', lobbies[lobbyId].players);
@@ -721,7 +726,122 @@ socket.on('getNumberSubmittedAnswer', ({ lobbyId },callback) => {
   });
 });
   }
+  function Countdown(lobbyId,playerId){
+    const lobby = lobbies[lobbyId];
+    if (!lobbies[lobbyId]) {
+      delete lobbies[lobbyId];
+      return;
+    }
+    
+    if (!lobbies[lobbyId].players) {
+      delete lobbies[lobbyId];
+      return;
+    }
+    if (!lobby) {
+      delete lobbies[lobbyId];
+      return;
+    }
+    
+    if (!lobby.players) {
+      delete lobbies[lobbyId];
+      return;
+    }
+    const player = lobby.players.find((p) => p.id.includes(playerId));
+    if(!player.toAnswer){
+      return;
+    }
+    if(lobby.Timer<=0)
+    {
+      const player= lobbies[lobbyId].players.find((p) => p.id.includes(playerId));
+      let result ="";
+      let choice ="";
+      if(!player.toAnswer)
+        return;
+      player.toAnswer=false;
+      if(lobbyQuizzes[lobbyId].CorrectAnswer==choice)
+        {
+          result="Correct Answer";
+        }
+        else{
+          result="Wrong Answer"
+        }
+      setTimeout(() => {
+        lobbies[lobbyId].players.forEach(player => {
+    player.id.forEach(socketId => {
+      io.to(socketId).emit('multipleChoicesUpdate',  lobbies[lobbyId].players);
+    });
+  });
+        lobbies[lobbyId].currentResult=result;
+      }, 1000);
+     
+      setTimeout(() => {
+        lobbies[lobbyId].players.forEach(player => {
+    player.id.forEach(socketId => {
+      io.to(socketId).emit('updateLobby', lobbies[lobbyId].players);
+    });
+  });
+        lobbies[lobbyId].showPopUp=false;
+       
+         
+      }, 3500);
+      setTimeout(() => {
+      
+        if (lobbyQuizzes[lobbyId].CorrectAnswer == choice) {
+          switch (Grid[player.position]) {
+            case "Training":
+              movePlayerAtEnd(socket.id, lobbies[lobbyId].Dice, lobbyId, 1);
+              break;
+            case "Deal":
+              movePlayerAtEnd(socket.id, 3, lobbyId, 1);
+              break;
+            case "MatchDay":
+              goToNextTurn(socket.id, lobbyId);
+              break;
+            case "Final":
+              movePlayerAtEnd(socket.id, 1, lobbyId, 1);
+              break;
+            case "DisciplinaryHearing":
+              goToNextTurn(socket.id, lobbyId);
+              break;
+            default:
+              goToNextTurn(socket.id, lobbyId);
+              break;
+          }
+        } else {
+          switch (Grid[player.position]) {
+            case "Training":
+              goToNextTurn(socket.id, lobbyId);
+              break;
+            case "Deal":
+               movePlayerReverse(socket.id, 3, lobbyId, 1);
+              break;
+            case "MatchDay":
+              movePlayerReverse(socket.id, lobbies[lobbyId].Dice, lobbyId, 1);
+              break;
+            case "Final":
+              movePlayerReverse(socket.id, 8, lobbyId, 1);
+              break;
+            case "DisciplinaryHearing":
+              movePlayerReverse(socket.id, player.position-1, lobbyId, 1);
+              break;  
+            default:
+              goToNextTurn(socket.id, lobbyId);
+              break;
+        }
+        
+         
+      }}, 5000);
   
+    }
+    if(lobby.Timer>0)
+    {
+      lobby.Timer--;
+      setTimeout(()=>{Countdown(lobbyId,playerId) ;  player.id.forEach(socketId => {
+        io.to(socketId).emit('multipleChoicesUpdate',  lobbies[lobbyId].players);
+      });},1000);
+      return;
+    }
+  }
   function goToNextTurn(playerId, lobbyId) {
     const lobby = lobbies[lobbyId];
     if (!lobbies[lobbyId]) {
@@ -788,6 +908,24 @@ socket.on('getNumberSubmittedAnswer', ({ lobbyId },callback) => {
     
     if (lobbies[lobbyId]) {
       callback({ DiceRoll: lobbies[lobbyId].Dice });
+    } else {
+      callback({ error: 'Lobby not found' });
+    }
+  });
+
+  socket.on('getTimer', ({ lobbyId }, callback) => {
+    if (!lobbies[lobbyId]) {
+      delete lobbies[lobbyId];
+      return;
+    }
+    
+    if (!lobbies[lobbyId].players) {
+      delete lobbies[lobbyId];
+      return;
+    }
+    
+    if (lobbies[lobbyId]) {
+      callback({ Timer : lobbies[lobbyId].Timer });
     } else {
       callback({ error: 'Lobby not found' });
     }
