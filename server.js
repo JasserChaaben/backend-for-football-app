@@ -773,9 +773,9 @@ socket.on('getNumberSubmittedAnswer', ({ lobbyId },callback) => {
         break;
     
       case "Get your turn immediately":
-        lobbies[lobbyId].players.forEach((p) => (p.turn = false)); // Reset all turns
         const currentPlayer = lobbies[lobbyId].players.find((p) => p.id.includes(playerId));
-        if (currentPlayer) currentPlayer.turn = true; // Set current player’s turn
+        lobbies[lobbyId].round=0;
+        if (currentPlayer) currentPlayer.turn = true;
         break;
     
       case "Move to the space just before the leader":
@@ -1405,7 +1405,11 @@ player.id.forEach(socketId => {
     
     const player = lobbies[lobbyId].players.find((player) => player.id.includes(socket.id));
     if (lobbies[lobbyId]) {
+      try{
       callback({ answer: player.toAnswer});
+    }catch(e){
+      console.log(e)
+    }
     } else {
       callback({ error: 'Lobby not found' });
     }
