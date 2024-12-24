@@ -197,7 +197,9 @@ io.on('connection', (socket) => {
       playerToAward:{id:null,name:null},
       showAwards:false,
       LastChoosedAward:"",
-      timeToGetReward:false
+      timeToGetReward:false,
+      message:"",
+      messageColor:""
     };
     lobbies[lobbyId] = lobbyData;
     console.log("lobby created with code : "+lobbyId)
@@ -250,8 +252,30 @@ io.on('connection', (socket) => {
       return callback({ success: false, message: 'Game already started' });
     }
   
+
     lobby.started = true;
-  
+
+    lobbies[lobbyId].message= "Game Started"
+    lobbies[lobbyId].messageColor="#4caf50" ;
+    lobbies[lobbyId].players.forEach(player => {
+      player.id.forEach(socketId => {
+        io.to(socketId).emit('updateMessage', lobbies[lobbyId].players);
+      })});
+      setTimeout(()=>{ 
+        lobbies[lobbyId].message= lobbies[lobbyId].players[0].playerInfo.name+"'s Turn";
+        lobbies[lobbyId].messageColor=lobbies[lobbyId].players[0].playerInfo.color;
+        lobbies[lobbyId].players.forEach(player => {
+          player.id.forEach(socketId => {
+            io.to(socketId).emit('updateMessage', lobbies[lobbyId].players);
+          })});},1000)
+    setTimeout(()=>{ 
+      lobbies[lobbyId].message= "";
+      lobbies[lobbyId].messageColor="";
+      lobbies[lobbyId].players.forEach(player => {
+        player.id.forEach(socketId => {
+          io.to(socketId).emit('updateMessage', lobbies[lobbyId].players);
+        })});},2000)
+
   
     
     lobbies[lobbyId].players.forEach(player => {
@@ -259,6 +283,8 @@ io.on('connection', (socket) => {
     io.to(socketId).emit('updateLobby', lobbies[lobbyId].players);
   });
 });;
+
+
     callback({ success: true });
   });
   
@@ -443,6 +469,13 @@ socket.on('getLobbyPlayers', ({ lobbyId }) => {
     }
   });
   
+  socket.on('getMessage', ({ lobbyId },callback) => {
+    const lobby = lobbies[lobbyId];
+    
+    if (lobby) {
+      return callback({ message:lobby.message,messageColor:lobby.messageColor });
+    }
+  });
   socket.on('getPlayerAwarded', ({ lobbyId },callback) => {
     const lobby = lobbies[lobbyId];
     
@@ -773,9 +806,24 @@ socket.on('getNumberSubmittedAnswer', ({ lobbyId },callback) => {
         break;
     
       case "Get your turn immediately":
-        const currentPlayer = lobbies[lobbyId].players.find((p) => p.id.includes(playerId));
-        lobbies[lobbyId].round=0;
-        if (currentPlayer) currentPlayer.turn = true;
+        lobbies[lobbyId].message= lobbies[lobbyId].players.find((p) => p.id.includes(playerId)).playerInfo.name+"'s Turn";
+        lobbies[lobbyId].messageColor= lobbies[lobbyId].players.find((p) => p.id.includes(playerId)).playerInfo.color;
+        lobbies[lobbyId].players.forEach(player => {
+          player.id.forEach(socketId => {
+            io.to(socketId).emit('updateMessage', lobbies[lobbyId].players);
+          })});
+        setTimeout(()=>{ 
+          lobbies[lobbyId].message= "";
+          lobbies[lobbyId].messageColor=""
+          lobbies[lobbyId].players.forEach(player => {
+            player.id.forEach(socketId => {
+              io.to(socketId).emit('updateMessage', lobbies[lobbyId].players);
+            })});
+          const currentPlayer = lobbies[lobbyId].players.find((p) => p.id.includes(playerId));
+          lobbies[lobbyId].round=0;
+          
+          if (currentPlayer) currentPlayer.turn = true;},1500)
+       
         break;
     
       case "Move to the space just before the leader":
@@ -1228,6 +1276,8 @@ player.id.forEach(socketId => {
       }}, 5000);
   
     }
+
+    
     if(lobby.Timer>0)
     {
       lobby.Timer--;
@@ -1269,27 +1319,57 @@ player.id.forEach(socketId => {
     if (lobby) {
       lobby.round++;
     if(lobby.round>=lobby.players.length){
-        
-    const randomQuiz = getRandomNumberQuiz();
-    lobbyQuizzes[lobbyId] = randomQuiz;
-      
-    lobby.showNumberPopUp=true;
-    lobbies[lobbyId].players.forEach(player=>player.toAnswer=true);
-    lobbies[lobbyId].players.forEach(player => {
-  player.id.forEach(socketId => {
-    io.to(socketId).emit('updateLobby', lobbies[lobbyId].players);
-  })});
+      lobby.message="Lightning Round";
+      lobby.messageColor="#4caf50"
+      lobbies[lobbyId].players.forEach(player => {
+        player.id.forEach(socketId => {
+          io.to(socketId).emit('updateMessage', lobbies[lobbyId].players);
+        })});
+      setTimeout(()=>{
+        lobby.message="";
+        lobby.messageColor=""
+        try{
+        lobbies[lobbyId].players.forEach(player => {
+          player.id.forEach(socketId => {
+            io.to(socketId).emit('updateMessage', lobbies[lobbyId].players);
+          })});
+        const randomQuiz = getRandomNumberQuiz();
+        lobbyQuizzes[lobbyId] = randomQuiz;
+          
+        lobby.showNumberPopUp=true;
+        lobbies[lobbyId].players.forEach(player=>player.toAnswer=true);
+        lobbies[lobbyId].players.forEach(player => {
+      player.id.forEach(socketId => {
+        io.to(socketId).emit('updateLobby', lobbies[lobbyId].players);
+      })});
+    }catch(e){
+  console.log(e);
+    }
+      },1500)
   return;
       }
       
-      
+      lobby.message=lobby.players[0].playerInfo.name+"'s Round";
+      lobby.messageColor=lobby.players[0].playerInfo.color;
+      lobbies[lobbyId].players.forEach(player => {
+        player.id.forEach(socketId => {
+          io.to(socketId).emit('updateMessage', lobbies[lobbyId].players);
+        })});
+        setTimeout(()=>{
+          try{
+          lobby.message="";
+          lobby.messageColor=""
+          lobbies[lobbyId].players.forEach(player => {
+            player.id.forEach(socketId => {
+              io.to(socketId).emit('updateMessage', lobbies[lobbyId].players);
+            })});
       lobby.players[0].turn = true;
   
       lobbies[lobbyId].players.forEach(player => {
   player.id.forEach(socketId => {
     io.to(socketId).emit('updateLobby', lobbies[lobbyId].players);
   });
-});
+});}catch{}},1000)
   }
 }
 
@@ -1321,17 +1401,35 @@ player.id.forEach(socketId => {
     if (lobby) {
       lobby.round++;
     if(lobby.round>=lobby.players.length){
-        
-    const randomQuiz = getRandomNumberQuiz();
-    lobbyQuizzes[lobbyId] = randomQuiz;
-      
-    lobby.showNumberPopUp=true;
-    lobbies[lobbyId].players.forEach(player=>player.toAnswer=true);
+    lobby.message="Lightning Round";
+    lobby.messageColor="#4caf50"
     lobbies[lobbyId].players.forEach(player => {
-  player.id.forEach(socketId => {
-    io.to(socketId).emit('updateLobby', lobbies[lobbyId].players);
-  })});
-  return;
+      player.id.forEach(socketId => {
+        io.to(socketId).emit('updateMessage', lobbies[lobbyId].players);
+      })});
+    setTimeout(()=>{
+      lobby.message="";
+      lobby.messageColor=""
+      try{
+      lobbies[lobbyId].players.forEach(player => {
+        player.id.forEach(socketId => {
+          io.to(socketId).emit('updateMessage', lobbies[lobbyId].players);
+        })});
+      const randomQuiz = getRandomNumberQuiz();
+      lobbyQuizzes[lobbyId] = randomQuiz;
+        
+      lobby.showNumberPopUp=true;
+      lobbies[lobbyId].players.forEach(player=>player.toAnswer=true);
+      lobbies[lobbyId].players.forEach(player => {
+    player.id.forEach(socketId => {
+      io.to(socketId).emit('updateLobby', lobbies[lobbyId].players);
+    })});
+  }catch(e){
+console.log(e);
+  }
+    },1500)
+  
+    return;
       }
       const currentIndex = lobby.players.findIndex(player => player.id.includes(playerId));
       
@@ -1339,15 +1437,31 @@ player.id.forEach(socketId => {
       if (currentIndex !== -1) {
         lobby.players[currentIndex].turn = false;
       }
-  
       const nextIndex = (currentIndex + 1) % lobby.players.length;
+      lobby.message=lobby.players[nextIndex].playerInfo.name+"'s Round";
+      lobby.messageColor=lobby.players[nextIndex].playerInfo.color;
+      lobbies[lobbyId].players.forEach(player => {
+        player.id.forEach(socketId => {
+          io.to(socketId).emit('updateMessage', lobbies[lobbyId].players);
+        })});
+        setTimeout(()=>{
+          try{
+          lobby.message="";
+          lobby.messageColor=""
+          lobbies[lobbyId].players.forEach(player => {
+            player.id.forEach(socketId => {
+              io.to(socketId).emit('updateMessage', lobbies[lobbyId].players);
+            })});
       lobby.players[nextIndex].turn = true;
   
       lobbies[lobbyId].players.forEach(player => {
   player.id.forEach(socketId => {
     io.to(socketId).emit('updateLobby', lobbies[lobbyId].players);
   });
-});
+});  }catch(e){
+  console.log(e);
+}
+},1500)
   }
 }
   socket.on('getDice', ({ lobbyId }, callback) => {
