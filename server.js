@@ -537,10 +537,15 @@ function EvaluateAnswers(lobbyId){
   
   let array =  lobbies[lobbyId].submittedNumberAnswers;
   let correctAns = lobbyQuizzes[lobbyId].CorrectAnswer;
+  try{
   const Winner=determineWinner(array, correctAns);
+  if(Winner){
+    lobbies[lobbyId].currentResult= "Correct Answer is "+correctAns+"\n"+Winner.name+" Wins this round!!" ;
 
-  lobbies[lobbyId].currentResult= "Correct Answer is "+correctAns+"\n"+Winner.name+" Wins this round" ;
-
+  }
+  else{
+    lobbies[lobbyId].currentResult= "No Winners this round!!" ;
+  }
   lobbies[lobbyId].players.forEach(player => {
     player.id.forEach(socketId => {
       io.to(socketId).emit('numberChoiceUpdate',  lobbies[lobbyId].players);
@@ -548,8 +553,37 @@ function EvaluateAnswers(lobbyId){
     
   
   });
-  
+  if(Winner){
+    
   setTimeout(()=>{AwardThePlayer(lobbyId,Winner.id)},1500)
+  }
+  else{
+    setTimeout(()=>{ 
+      lobbies[lobbyId].showNumberPopUp=false;
+      lobbies[lobbyId].round=-1;
+      lobbies[lobbyId].players.forEach(player => {
+        player.id.forEach(socketId => {
+          io.to(socketId).emit('updateLobby',  lobbies[lobbyId].players);
+        });
+        
+      
+      });
+      goToFirstTurn(lobbyId);},1500)
+   
+  }
+}catch(e){
+  console.log(e);
+  setTimeout(()=>{ 
+    lobbies[lobbyId].showNumberPopUp=false;
+    lobbies[lobbyId].round=-1;lobbies[lobbyId].players.forEach(player => {
+      player.id.forEach(socketId => {
+        io.to(socketId).emit('updateLobby',  lobbies[lobbyId].players);
+      });
+      
+    
+    });
+    goToFirstTurn(lobbyId);},1500)
+}
 }
 function AwardThePlayer(lobbyId,playerId){
   if (!lobbies[lobbyId]) {
@@ -848,6 +882,7 @@ socket.on('getNumberSubmittedAnswer', ({ lobbyId },callback) => {
     
       case "Steal 3 spaces from the player ahead of you":
         const nextPlayerId = getNextId(lobbyId, playerId);
+        try{
         if(lobbies[lobbyId].players.find((p) => p.id.includes(nextPlayerId)).imune)
           lobbies[lobbyId].players.find((p) => p.id.includes(nextPlayerId)).imune=false;
         else
@@ -855,7 +890,9 @@ socket.on('getNumberSubmittedAnswer', ({ lobbyId },callback) => {
         if (nextPlayerId) {
           movePlayerReverseWithoutNextTurn(nextPlayerId, 3, lobbyId, 1);
           movePlayerAtEndWithoutNextTurn(playerId, 3, lobbyId, 1);
-        }}
+        }}}catch(e){
+          console.log(e);
+        }
         setTimeout(() => {
           goToFirstTurn( lobbyId);
         }, 3000);
@@ -1055,6 +1092,25 @@ function movePlayerAtEndWithoutNextTurn(playerId, diceRoll, lobbyId,first) {
   const player = lobby.players.find((p) => p.id.includes(playerId));
   if(player.position>=90)
   {
+
+    lobbies[lobbyId].message=player.playerInfo.name + " Won! ";
+      lobbies[lobbyId].messageColor="#4caf50";
+      setTimeout(()=>{
+        try{
+        lobbies[lobbyId].players.forEach(p=>p.playerInfo.position=0);
+        lobbies[lobbyId].started=false;
+        lobbies[lobbyId].message="";
+        lobbies[lobbyId].players.forEach(player => {
+          player.id.forEach(socketId => {
+            io.to(socketId).emit('numberChoiceUpdate',  lobbies[lobbyId].players);
+          });
+          
+        
+        });
+      }catch(e){
+        console.log(e)
+      }
+      },7000);
     return;
   }
   if (!player) {
@@ -1095,6 +1151,24 @@ player.id.forEach(socketId => {
     const player = lobby.players.find((p) => p.id.includes(playerId));
     if(player.position>=90)
     {
+      lobbies[lobbyId].message=player.playerInfo.name + " Won! ";
+      lobbies[lobbyId].messageColor="#4caf50";
+      setTimeout(()=>{
+        try{
+        lobbies[lobbyId].players.forEach(p=>p.playerInfo.position=0);
+        lobbies[lobbyId].started=false;
+        lobbies[lobbyId].message="";
+        lobbies[lobbyId].players.forEach(player => {
+          player.id.forEach(socketId => {
+            io.to(socketId).emit('numberChoiceUpdate',  lobbies[lobbyId].players);
+          });
+          
+        
+        });
+      }catch(e){
+        console.log(e)
+      }
+      },7000);
       return;
     }
     if (!player) {
@@ -1127,7 +1201,24 @@ player.id.forEach(socketId => {
     const player = lobby.players.find((p) => p.id.includes(playerId));
     if(player.position>=90)
     {
-      console.log(player.playerInfo.name + " has won the game ")
+      lobbies[lobbyId].message=player.playerInfo.name + " Won! ";
+      lobbies[lobbyId].messageColor="#4caf50";
+      setTimeout(()=>{
+        try{
+        lobbies[lobbyId].players.forEach(p=>p.playerInfo.position=0);
+        lobbies[lobbyId].started=false;
+        lobbies[lobbyId].message="";
+        lobbies[lobbyId].players.forEach(player => {
+          player.id.forEach(socketId => {
+            io.to(socketId).emit('numberChoiceUpdate',  lobbies[lobbyId].players);
+          });
+          
+        
+        });
+      }catch(e){
+        console.log(e)
+      }
+      },7000);
       return;
     }
     if(first>diceRoll)
@@ -1141,12 +1232,12 @@ player.id.forEach(socketId => {
     lobby.showPopUp=true;
     player.toAnswer=true;
     lobby.Timer=10;
-    setTimeout(()=>{Countdown(lobbyId,playerId) ;
+    Countdown(lobbyId,playerId) ;
         
       lobbies[lobbyId].players.forEach(player => {
       player.id.forEach(socketId => {
       io.to(socketId).emit('multipleChoicesUpdate',  lobbies[lobbyId].players);
-    })});},1000);
+    })});
     lobbies[lobbyId].players.forEach(player => {
   player.id.forEach(socketId => {
     io.to(socketId).emit('updateLobby', lobbies[lobbyId].players);
@@ -1292,7 +1383,52 @@ player.id.forEach(socketId => {
   }
 
 
-
+  function CountdownNumbers(lobbyId){
+    const lobby = lobbies[lobbyId];
+    if (!lobbies[lobbyId]) {
+      delete lobbies[lobbyId];
+      return;
+    }
+    
+    if (!lobbies[lobbyId].players) {
+      delete lobbies[lobbyId];
+      return;
+    }
+    if (!lobby) {
+      delete lobbies[lobbyId];
+      return;
+    }
+    
+    if (!lobby.players) {
+      delete lobbies[lobbyId];
+      return;
+    }
+    if(lobbies[lobbyId].numberSubmittedAnswers>=lobbies[lobbyId].players.length){
+    return;
+    }
+    if(lobby.Timer<=0)
+    {
+      try{
+     
+      lobbies[lobbyId].players.forEach(player=>player.toAnswer=false);
+    }catch(e){
+      console.log(e);
+    }
+      setTimeout(()=>{EvaluateAnswers(lobbyId)},1000)
+      return;
+    }
+    if(lobby.Timer>0)
+      {
+        lobby.Timer--;
+        setTimeout(()=>{CountdownNumbers(lobbyId) ;
+          
+          lobbies[lobbyId].players.forEach(player => {
+          player.id.forEach(socketId => {
+          io.to(socketId).emit('numberChoiceUpdate',  lobbies[lobbyId].players);
+        })});},1000);
+        return;
+      }
+  }
 
   function goToFirstTurn(lobbyId) {
     const lobby = lobbies[lobbyId];
@@ -1337,6 +1473,12 @@ player.id.forEach(socketId => {
         lobbyQuizzes[lobbyId] = randomQuiz;
           
         lobby.showNumberPopUp=true;
+        lobby.Timer=20;
+        CountdownNumbers(lobbyId);
+        lobbies[lobbyId].players.forEach(player => {
+          player.id.forEach(socketId => {
+            io.to(socketId).emit('numberChoiceUpdate', lobbies[lobbyId].players);
+          })});
         lobbies[lobbyId].players.forEach(player=>player.toAnswer=true);
         lobbies[lobbyId].players.forEach(player => {
       player.id.forEach(socketId => {
@@ -1396,7 +1538,7 @@ player.id.forEach(socketId => {
       delete lobbies[lobbyId];
       return;
     }
-
+    const currentIndex = lobby.players.findIndex(player => player.id.includes(playerId));
     lobby.currentResult=""
     if (lobby) {
       lobby.round++;
@@ -1419,6 +1561,12 @@ player.id.forEach(socketId => {
       lobbyQuizzes[lobbyId] = randomQuiz;
         
       lobby.showNumberPopUp=true;
+      lobby.Timer=20;
+      CountdownNumbers(lobbyId);
+      lobbies[lobbyId].players.forEach(player => {
+        player.id.forEach(socketId => {
+          io.to(socketId).emit('numberChoiceUpdate', lobbies[lobbyId].players);
+        })});
       lobbies[lobbyId].players.forEach(player=>player.toAnswer=true);
       lobbies[lobbyId].players.forEach(player => {
     player.id.forEach(socketId => {
@@ -1431,7 +1579,7 @@ console.log(e);
   
     return;
       }
-      const currentIndex = lobby.players.findIndex(player => player.id.includes(playerId));
+      
       
       
       if (currentIndex !== -1) {
@@ -1554,19 +1702,25 @@ console.log(e);
         lobby.showPopUp=false;
         goToNextTurn(playerId, lobbyId);
       }
-      lobby.players.splice(playerIndex, 1);
-      lobbies[lobbyId].players.forEach(player => {
-player.id.forEach(socketId => {
-  io.to(socketId).emit('updateLobby', lobbies[lobbyId].players);
-});
-});; 
-      if (lobby.players.length === 0) {
-        delete lobbies[lobbyId];
-      }else if(ownerDisconnected){
-        lobbies[lobbyId].players[0].playerInfo.owner=true;
-      }
+      setTimeout(()=>{
+        try{
+        lobby.players.splice(playerIndex, 1);
+        if(!lobbies[lobbyId]){
+          delete lobbies[lobbyId];
+        }
+        lobbies[lobbyId].players.forEach(player => {
+  player.id.forEach(socketId => {
+    io.to(socketId).emit('updateLobby', lobbies[lobbyId].players);
+  });
+  });
+        if (lobby.players.length === 0) {
+          delete lobbies[lobbyId];
+        }else if(ownerDisconnected){
+          lobbies[lobbyId].players[0].playerInfo.owner=true;
+        }
+        
+        console.log(`Player ${socket.id} disconnected and removed from lobby ${lobbyId}`);}catch(e){console.log(e)}},500)
       
-      console.log(`Player ${socket.id} disconnected and removed from lobby ${lobbyId}`);
   }
   }
   const CheckForDisconnection=(lobbyId,playerId,time)=>{
