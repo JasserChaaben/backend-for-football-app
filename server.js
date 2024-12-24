@@ -1768,7 +1768,7 @@ console.log(e);
   }
   }
   const CheckForDisconnection=(lobbyId,playerId,time)=>{
-   
+   try{
     const lobby = lobbies[lobbyId];
     const playerIndex = lobby.players.findIndex((player) => player.id.includes(socket.id));
     if(time<=0)
@@ -1795,7 +1795,9 @@ console.log(e);
         });
       });;
       CheckForDisconnection(lobbyId,playerId,time-1);
-    }, 1000);
+    }, 1000);}catch(e){
+      console.log(e)
+    }
   }
   socket.on('disconnect', () => {
     ownerDisconnected = false;
