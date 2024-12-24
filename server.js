@@ -120,6 +120,7 @@ const lobbyQuizzes = {};
 
 const lobbyAwards = {}; 
 
+const chat = {};
 let users = {};
 
 app.get('/quizzes', (req, res) => {
@@ -169,6 +170,49 @@ io.on('connection', (socket) => {
       socket.emit('restoreData', players[userID]);  // Send the saved player data
     }
   });
+  socket.on('addChatMessage', ({ lobbyId,message }) => {
+    if (!lobbies[lobbyId]) {
+      delete lobbies[lobbyId];
+      return;
+    }
+    
+    if (!lobbies[lobbyId].players) {
+      delete lobbies[lobbyId];
+      return;
+    }
+  const player = lobbies[lobbyId].players.find(p=>p.id.includes(socket.id));
+  
+  if (!player) {
+    return;
+  }
+
+  const playerName = player.playerInfo.name;
+  const playerColor = player.playerInfo.color;
+  const chatMessage = {
+    text: `${playerName}: ${message}`,
+    color: playerColor,
+  };
+
+  if (!chat[lobbyId]) {
+    chat[lobbyId] = [];
+  }
+
+  chat[lobbyId].push(chatMessage);
+  lobbies[lobbyId].players.forEach(player => {
+    player.id.forEach(socketId => {
+      io.to(socketId).emit('chatMessage', lobbies[lobbyId].players);
+    })});
+  });
+
+  socket.on('getChat', ({ lobbyId },callback) => {
+    if (!chat[lobbyId]) {
+      return;
+    }
+    
+    return callback({ chat: chat[lobbyId] });
+  });
+  
+
   socket.on('createLobby', ({ playerInfo, isPrivate, started }, callback) => {
     const lobbyId = Math.random().toString(36).substring(2, 14);
     const lobbyData = {
